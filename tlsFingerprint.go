@@ -1,4 +1,4 @@
-package tlsfingerprinting
+package dactyloscopy
 
 import (
 	"fmt"
