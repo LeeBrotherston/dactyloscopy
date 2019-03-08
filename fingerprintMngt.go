@@ -48,8 +48,8 @@ func fpFiletoFP(myPrint fingerprintFile) Fingerprint {
 	return output
 }
 
-// And now the hashed versions, whereby we do not actually need to store the FPs at all.
-func addPrintNew(myPrint Fingerprint, myDB map[uint64]string) {
+// AddPrintNew adds a fingerprint to the internal DB
+func AddPrintNew(myPrint Fingerprint, myDB map[uint64]string) {
 	myHash := hashPrint(myPrint)
 	if _, ok := myDB[myHash]; ok {
 		fmt.Printf("Hash Collision: %v %s and %s\n", myHash, myDB[myHash], myPrint.desc)

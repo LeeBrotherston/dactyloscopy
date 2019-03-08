@@ -290,7 +290,7 @@ func TLSFingerprint(buf []byte, proxyDest string, fingerprintDBNew map[uint64]st
 			// Add the fingerprint
 			tempFPCounter++
 			thisFingerprint.desc = "Temp fingerprint " + strconv.Itoa(tempFPCounter)
-			addPrintNew(thisFingerprint, fingerprintDBNew)
+			AddPrintNew(thisFingerprint, fingerprintDBNew)
 
 			log.Printf("Unidentified client fingerprint.\n")
 
