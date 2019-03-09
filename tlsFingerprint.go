@@ -196,8 +196,8 @@ func TLSFingerprint(buf []byte, proxyDest string, fingerprintDBNew map[uint64]st
 
 				destination = string(hostname) + ":" + "443"
 
-				output.destination = []byte(destination)
-				output.hostname = hostname
+				output.Destination = []byte(destination)
+				output.Hostname = hostname
 
 				// Currently this will serve to only use SNS when there is no proxy setting
 				if len(proxyDest) == 0 {
@@ -282,7 +282,7 @@ func TLSFingerprint(buf []byte, proxyDest string, fingerprintDBNew map[uint64]st
 
 		fingerprintName, fpExist, fpHashTmp := lookupFingerprint(thisFingerprint, fingerprintDBNew)
 		fpHash = fpHashTmp //  This is stupid, I should neaten this up
-		output.fingerprintName = fingerprintName
+		output.FingerprintName = fingerprintName
 
 		if fpExist {
 			log.Printf("Client Fingerprint: %v\n", fingerprintName)
