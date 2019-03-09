@@ -29,7 +29,7 @@ func hashPrint(myPrint Fingerprint) uint64 {
 
 // FpFiletoFP is to convert between two similar, but not idential structs which I now want
 // to use them interchangably, because I'm a tool.
-func FpFiletoFP(myPrint fingerprintFile) Fingerprint {
+func FpFiletoFP(myPrint FingerprintFile) Fingerprint {
 	var output Fingerprint
 
 	// Copy and convert the relevent fields
