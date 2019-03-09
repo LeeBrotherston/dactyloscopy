@@ -1,6 +1,6 @@
 package dactyloscopy
 
-// Type for json fingerprint in the fingerprints JSON file
+// FingerprintFile is the type used when importing a fingerprints JSON file
 // Names much be uppercase to make this work and the `json:"name"`
 // maps them back to the names contained in the file for compatibility
 // with fingerprintls.

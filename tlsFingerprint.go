@@ -280,7 +280,7 @@ func TLSFingerprint(buf []byte, proxyDest string, fingerprintDBNew map[uint64]st
 
 		}
 
-		fingerprintName, fpExist, fpHashTmp := lookupFingerprint(thisFingerprint, fingerprintDBNew)
+		fingerprintName, fpExist, fpHashTmp := lookup(thisFingerprint, fingerprintDBNew)
 		fpHash = fpHashTmp //  This is stupid, I should neaten this up
 		output.FingerprintName = fingerprintName
 
@@ -290,7 +290,7 @@ func TLSFingerprint(buf []byte, proxyDest string, fingerprintDBNew map[uint64]st
 			// Add the fingerprint
 			tempFPCounter++
 			thisFingerprint.desc = "Temp fingerprint " + strconv.Itoa(tempFPCounter)
-			AddPrintNew(thisFingerprint, fingerprintDBNew)
+			Add(thisFingerprint, fingerprintDBNew)
 
 			log.Printf("Unidentified client fingerprint.\n")
 

@@ -45,8 +45,8 @@ func HexNormalise(s string) string {
 	return strings.ToLower(output)
 }
 
-// UnpadStr removes pairs of '15' at even spacing from a str
-func UnpadStr(s string) string {
+// unpad removes pairs of '15' at even spacing from a str
+func unpad(s string) string {
 	var output string
 	var i = 0
 
@@ -119,10 +119,4 @@ func deGrease(s []byte) (int, []byte) {
 		return greaseCount, greaseless
 	}
 	return 0, s
-}
-
-// hashFP is used to hash whole fingerprints into a single string based hash
-func hashFP() {
-	//something := "arse"
-	//thing := murmur3.Sum64(something)
 }

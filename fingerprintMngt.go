@@ -6,8 +6,8 @@ import (
 	"github.com/spaolacci/murmur3"
 )
 
-// hashPrint generates the hash of the FP, to be used in the FP lookup tables
-func hashPrint(myPrint Fingerprint) uint64 {
+// hash generates the hash of the FP, to be used in the FP lookup tables
+func hash(myPrint Fingerprint) uint64 {
 	hasher := murmur3.New64()
 	// Throw the various values into the hashererererer
 	hasher.Write([]byte(myPrint.ciphersuite))
@@ -27,9 +27,10 @@ func hashPrint(myPrint Fingerprint) uint64 {
 	return myHash
 }
 
-// FpFiletoFP is to convert between two similar, but not idential structs which I now want
-// to use them interchangably, because I'm a tool.
-func FpFiletoFP(myPrint FingerprintFile) Fingerprint {
+// Ftop is to convert between two similar, but not idential structs
+// (fingerprint file, and internal fingerprint storage) which I now want
+// to use interchangably, because I'm a tool.
+func Ftop(myPrint FingerprintFile) Fingerprint {
 	var output Fingerprint
 
 	// Copy and convert the relevent fields
@@ -48,9 +49,9 @@ func FpFiletoFP(myPrint FingerprintFile) Fingerprint {
 	return output
 }
 
-// AddPrintNew adds a fingerprint to the internal DB
-func AddPrintNew(myPrint Fingerprint, myDB map[uint64]string) {
-	myHash := hashPrint(myPrint)
+// Add adds a fingerprint to the internal DB
+func Add(myPrint Fingerprint, myDB map[uint64]string) {
+	myHash := hash(myPrint)
 	if _, ok := myDB[myHash]; ok {
 		fmt.Printf("Hash Collision: %v %s and %s\n", myHash, myDB[myHash], myPrint.desc)
 	} else {
@@ -60,9 +61,9 @@ func AddPrintNew(myPrint Fingerprint, myDB map[uint64]string) {
 	tempFPCounter++
 }
 
-// lookupFingerprint is used to lookup the name of a fingerprint given the JSON representation
-func lookupFingerprint(myPrint Fingerprint, myDB map[uint64]string) (string, bool, uint64) {
-	myHash := hashPrint(myPrint)
+// lookup is used to lookup the name of a fingerprint given the JSON representation
+func lookup(myPrint Fingerprint, myDB map[uint64]string) (string, bool, uint64) {
+	myHash := hash(myPrint)
 	fmt.Printf("Looking up hash: %v\n", myHash)
 	if value, ok := myDB[myHash]; ok {
 		return value, true, myHash
