@@ -11,7 +11,7 @@ var tempFPCounter int
 // Check that lengths are not off the end of the packet, etc XXX TODO
 
 // TLSFingerprint finds the fingerprint that is matched by the provided packet
-func TLSFingerprint(buf []byte, proxyDest string, fingerprintDBNew map[uint64]string) (FingerprintOutput, Fingerprint, uint64) {
+func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (FingerprintOutput, Fingerprint, uint64) {
 
 	var output FingerprintOutput
 	var thisFingerprint Fingerprint
@@ -198,11 +198,6 @@ func TLSFingerprint(buf []byte, proxyDest string, fingerprintDBNew map[uint64]st
 
 				output.Destination = []byte(destination)
 				output.Hostname = hostname
-
-				// Currently this will serve to only use SNS when there is no proxy setting
-				if len(proxyDest) == 0 {
-					proxyDest = destination
-				}
 
 				// Set the i pointer
 				i += extLength + 1
