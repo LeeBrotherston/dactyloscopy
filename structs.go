@@ -18,7 +18,7 @@ type FingerprintFile struct {
 	SigAlg            string  `json:"sig_alg"`
 	ECPointFmt        string  `json:"ec_point_fmt"`
 	Grease            bool    `json:"grease"`
-	SupportedVersions string  `json:supportedVersions:`
+	SupportedVersions string  `json:supportedVersions`
 	Hash              uint64  `json:"hash"`
 }
 
