@@ -23,6 +23,7 @@ func hash(myPrint Fingerprint) uint64 {
 	hasher.Write([]byte(myPrint.recordTLSVersion))
 	hasher.Write([]byte(myPrint.sigAlg))
 	hasher.Write([]byte(myPrint.TLSVersion))
+	hasher.Write([]byte(myPrint.supportedVersions))
 	myHash := hasher.Sum64()
 	return myHash
 }
@@ -44,6 +45,7 @@ func Ftop(myPrint FingerprintFile) Fingerprint {
 	output.eCurves = hexStrToByteArray(myPrint.ECurves)
 	output.sigAlg = hexStrToByteArray(myPrint.SigAlg)
 	output.ecPointFmt = hexStrToByteArray(myPrint.ECPointFmt)
+	output.supportedVersions = hexStrToByteArray(myPrint.supportedVersions)
 	output.grease = myPrint.Grease
 
 	return output

@@ -265,6 +265,21 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 
 				i += extLength + 1
 
+			case 0x002b:
+			    /* Supported versions (new in TLS 1.3... I think) */
+			    extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
+                supportedVersionsLength :=  uint16(uint8(buf[offset+i+2]))
+
+                thisFingerprint.supportedVersions = make([]byte, supportedVersionsLength)
+
+                if supportedVersionsLength != uint16(copy(thisFingerprint.supportedVersions, buf[(offset+i+4):(offset+i+4+supportedVersionsLength)])) {
+                    log.Printf("Problem: failed to copy supportedVersions\n")
+                } else {
+                    //log.Printf("sigAlg: %#x\n", sigAlg)
+                }
+
+                i += extLength + 1
+
 			default:
 				// Move i to the extension
 				// Special cases will have to place i themselves for $reasons :)
