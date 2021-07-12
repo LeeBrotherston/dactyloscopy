@@ -45,7 +45,7 @@ func Ftop(myPrint FingerprintFile) Fingerprint {
 	output.eCurves = hexStrToByteArray(myPrint.ECurves)
 	output.sigAlg = hexStrToByteArray(myPrint.SigAlg)
 	output.ecPointFmt = hexStrToByteArray(myPrint.ECPointFmt)
-	output.supportedVersions = hexStrToByteArray(myPrint.supportedVersions)
+	output.supportedVersions = hexStrToByteArray(myPrint.SupportedVersions)
 	output.grease = myPrint.Grease
 
 	return output
