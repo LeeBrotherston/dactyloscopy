@@ -42,8 +42,8 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 		var i uint16
 		destination := ""
 
-		thisFingerprint.recordTLSVersion = make([]byte, 2)
-		copy(thisFingerprint.recordTLSVersion, buf[1:3])
+		thisFingerprint.RecordTLSVersion = make([]byte, 2)
+		copy(thisFingerprint.RecordTLSVersion, buf[1:3])
 
 		//chLen = uint16(buf[3])<<8 + uint16(buf[4])
 
@@ -78,14 +78,14 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 		// as grease patterns are randomized by some clients.
 		shrinkBy, otherTempCiphersuite := deGrease(tempCiphersuite)
 		if shrinkBy > 0 {
-			thisFingerprint.grease = true
+			thisFingerprint.Grease = true
 		}
 
 		// Reconstruct the packet around the new ciphersuites if grease suites have been stripped out
 		// as this will alter the length, etc
 		greaseCiphersuiteLength := ciphersuiteLength - uint16(shrinkBy*2)
-		thisFingerprint.ciphersuite = make([]byte, uint16(greaseCiphersuiteLength))
-		copy(thisFingerprint.ciphersuite, otherTempCiphersuite)
+		thisFingerprint.Ciphersuite = make([]byte, uint16(greaseCiphersuiteLength))
+		copy(thisFingerprint.Ciphersuite, otherTempCiphersuite)
 
 		// Let's take a lookie see at the compression settings, which are always the same ;)
 		var compressionMethodsLen byte
@@ -100,9 +100,9 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 		}
 
 		// XXX move to using copy like ciphersuites
-		thisFingerprint.compression = make([]byte, uint16(compressionMethodsLen))
+		thisFingerprint.Compression = make([]byte, uint16(compressionMethodsLen))
 		for i = 0; i < uint16(compressionMethodsLen); i++ {
-			thisFingerprint.compression[i] = buf[47+uint16(sessionIDLength)+ciphersuiteLength]
+			thisFingerprint.Compression[i] = buf[47+uint16(sessionIDLength)+ciphersuiteLength]
 		}
 
 		// And now to the really exciting world of extensions.... extensions!!!
@@ -146,12 +146,12 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 			case 0xDADA:
 			case 0xEAEA:
 			case 0xFAFA:
-				thisFingerprint.grease = true
+				thisFingerprint.Grease = true
 			// Or padding, because it's padding.....
 			case 0x0015:
 			// But everything else is fine
 			default:
-				thisFingerprint.extensions = append(thisFingerprint.extensions, buf[offset+i], buf[offset+i+1])
+				thisFingerprint.Extensions = append(thisFingerprint.Extensions, buf[offset+i], buf[offset+i+1])
 			}
 
 			// Move counter to start of extension
@@ -222,12 +222,12 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 				copy(tempeCurves, buf[offset+i+4:offset+i+4+ellipticCurvesLength])
 				shrinkBy, otherTempeCurves := deGrease(tempeCurves)
 				if shrinkBy > 0 {
-					thisFingerprint.grease = true
+					thisFingerprint.Grease = true
 				}
 				greaseeCurvesLength := ellipticCurvesLength - uint16(shrinkBy*2)
 
-				thisFingerprint.eCurves = make([]byte, greaseeCurvesLength)
-				if greaseeCurvesLength != uint16(copy(thisFingerprint.eCurves, otherTempeCurves)) {
+				thisFingerprint.ECurves = make([]byte, greaseeCurvesLength)
+				if greaseeCurvesLength != uint16(copy(thisFingerprint.ECurves, otherTempeCurves)) {
 					log.Printf("Problem: failed to copy ellipticCurves\n")
 				}
 
@@ -241,8 +241,8 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 				// ecPoint is only an 8bit length, stored at uint16 to make comparison easier
 				ecPointLength := uint16(uint8(buf[offset+i+2]))
 
-				thisFingerprint.ecPointFmt = make([]byte, ecPointLength)
-				if ecPointLength != uint16(copy(thisFingerprint.ecPointFmt, buf[offset+i+3:offset+i+3+ecPointLength])) {
+				thisFingerprint.EcPointFmt = make([]byte, ecPointLength)
+				if ecPointLength != uint16(copy(thisFingerprint.EcPointFmt, buf[offset+i+3:offset+i+3+ecPointLength])) {
 					log.Printf("Problem: failed to copy ecPoint\n")
 				}
 
@@ -255,9 +255,9 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 
 				sigAlgLength := uint16(buf[offset+i+2])<<8 + uint16(buf[offset+i+3])
 
-				thisFingerprint.sigAlg = make([]byte, sigAlgLength)
+				thisFingerprint.SigAlg = make([]byte, sigAlgLength)
 
-				if sigAlgLength != uint16(copy(thisFingerprint.sigAlg, buf[(offset+i+4):(offset+i+4+sigAlgLength)])) {
+				if sigAlgLength != uint16(copy(thisFingerprint.SigAlg, buf[(offset+i+4):(offset+i+4+sigAlgLength)])) {
 					log.Printf("Problem: failed to copy sigAlg\n")
 				} else {
 					//log.Printf("sigAlg: %#x\n", sigAlg)
@@ -266,19 +266,19 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 				i += extLength + 1
 
 			case 0x002b:
-			    /* Supported versions (new in TLS 1.3... I think) */
-			    extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
-                supportedVersionsLength :=  uint16(uint8(buf[offset+i+2]))
+				/* Supported versions (new in TLS 1.3... I think) */
+				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
+				supportedVersionsLength := uint16(uint8(buf[offset+i+2]))
 
-                thisFingerprint.supportedVersions = make([]byte, supportedVersionsLength)
+				thisFingerprint.SupportedVersions = make([]byte, supportedVersionsLength)
 
-                if supportedVersionsLength != uint16(copy(thisFingerprint.supportedVersions, buf[(offset+i+4):(offset+i+4+supportedVersionsLength)])) {
-                    log.Printf("Problem: failed to copy supportedVersions\n")
-                } else {
-                    //log.Printf("sigAlg: %#x\n", sigAlg)
-                }
+				if supportedVersionsLength != uint16(copy(thisFingerprint.SupportedVersions, buf[(offset+i+4):(offset+i+4+supportedVersionsLength)])) {
+					log.Printf("Problem: failed to copy supportedVersions\n")
+				} else {
+					//log.Printf("sigAlg: %#x\n", sigAlg)
+				}
 
-                i += extLength + 1
+				i += extLength + 1
 
 			default:
 				// Move i to the extension
@@ -299,7 +299,7 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 		} else {
 			// Add the fingerprint
 			tempFPCounter++
-			thisFingerprint.desc = "Temp fingerprint " + strconv.Itoa(tempFPCounter)
+			thisFingerprint.Desc = "Temp fingerprint " + strconv.Itoa(tempFPCounter)
 			Add(thisFingerprint, fingerprintDBNew)
 
 			log.Printf("Unidentified client fingerprint.\n")
