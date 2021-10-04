@@ -205,11 +205,25 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 			case 0x0015:
 				// This is padding, we ignore padding.
 				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
+				if int(offset+i+extLength) > packetLen {
+					// Check that this offset doesn't push any pointers past the end of the packet
+					// We do this by taking the current location, adding the extension's length
+					// value on, and seeing if this exceeds the total length of the packet being
+					//  examined.
+					invalidTLS("Extension length exceeds total packet length")
+				}
 				i += extLength + 1
 
 			case 0x000a:
 				/* ellipticCurves */
 				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
+				if int(offset+i+extLength) > packetLen {
+					// Check that this offset doesn't push any pointers past the end of the packet
+					// We do this by taking the current location, adding the extension's length
+					// value on, and seeing if this exceeds the total length of the packet being
+					//  examined.
+					invalidTLS("Extension length exceeds total packet length")
+				}
 
 				// Check internal Length
 				if (uint16(buf[offset+i+2])<<8 + uint16(buf[offset+i+3])) != (extLength - 2) {
@@ -237,6 +251,13 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 			case 0x000b:
 				/* ecPoint formats */
 				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
+				if int(offset+i+extLength) > packetLen {
+					// Check that this offset doesn't push any pointers past the end of the packet
+					// We do this by taking the current location, adding the extension's length
+					// value on, and seeing if this exceeds the total length of the packet being
+					//  examined.
+					invalidTLS("Extension length exceeds total packet length")
+				}
 
 				// ecPoint is only an 8bit length, stored at uint16 to make comparison easier
 				ecPointLength := uint16(uint8(buf[offset+i+2]))
@@ -252,6 +273,13 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 			case 0x000d:
 				/* Signature algorithms */
 				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
+				if int(offset+i+extLength) > packetLen {
+					// Check that this offset doesn't push any pointers past the end of the packet
+					// We do this by taking the current location, adding the extension's length
+					// value on, and seeing if this exceeds the total length of the packet being
+					//  examined.
+					invalidTLS("Extension length exceeds total packet length")
+				}
 
 				sigAlgLength := uint16(buf[offset+i+2])<<8 + uint16(buf[offset+i+3])
 
@@ -268,6 +296,14 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 			case 0x002b:
 				/* Supported versions (new in TLS 1.3... I think) */
 				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
+				if int(offset+i+extLength) > packetLen {
+					// Check that this offset doesn't push any pointers past the end of the packet
+					// We do this by taking the current location, adding the extension's length
+					// value on, and seeing if this exceeds the total length of the packet being
+					//  examined.
+					invalidTLS("Extension length exceeds total packet length")
+				}
+
 				supportedVersionsLength := uint16(uint8(buf[offset+i+2]))
 
 				thisFingerprint.SupportedVersions = make([]byte, supportedVersionsLength)
@@ -284,6 +320,13 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 				// Move i to the extension
 				// Special cases will have to place i themselves for $reasons :)
 				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
+				if int(offset+i+extLength) > packetLen {
+					// Check that this offset doesn't push any pointers past the end of the packet
+					// We do this by taking the current location, adding the extension's length
+					// value on, and seeing if this exceeds the total length of the packet being
+					//  examined.
+					invalidTLS("Extension length exceeds total packet length")
+				}
 				i += extLength + 1
 
 			}
