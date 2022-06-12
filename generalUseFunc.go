@@ -2,16 +2,8 @@ package dactyloscopy
 
 import (
 	"encoding/hex"
-	"fmt"
 	"strings"
 )
-
-// check is a (probably over) simple function to wrap errors that will always be fatal
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
 
 // Take any number of formats (0x057843574835743, 0x00 0x01 0x00, 5847358943) in hex format,
 // and convert to a byte array.
@@ -45,6 +37,7 @@ func HexNormalise(s string) string {
 	return strings.ToLower(output)
 }
 
+/*
 // unpad removes pairs of '15' at even spacing from a str
 func unpad(s string) string {
 	var output string
@@ -59,6 +52,7 @@ func unpad(s string) string {
 	}
 	return output
 }
+*/
 
 // deGrease will remove grease from the provided input and will return the
 // number of times it was degreased as well as the degreased bytes

@@ -267,8 +267,6 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 
 				if sigAlgLength != uint16(copy(thisFingerprint.SigAlg, buf[(offset+i+4):(offset+i+4+sigAlgLength)])) {
 					log.Printf("Problem: failed to copy sigAlg\n")
-				} else {
-					//log.Printf("sigAlg: %#x\n", sigAlg)
 				}
 
 				i += extLength + 1
@@ -290,8 +288,6 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 
 				if supportedVersionsLength != uint16(copy(thisFingerprint.SupportedVersions, buf[(offset+i+4):(offset+i+4+supportedVersionsLength)])) {
 					log.Printf("Problem: failed to copy supportedVersions\n")
-				} else {
-					//log.Printf("sigAlg: %#x\n", sigAlg)
 				}
 
 				i += extLength + 1
