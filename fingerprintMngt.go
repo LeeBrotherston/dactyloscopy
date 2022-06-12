@@ -28,6 +28,30 @@ func hash(myPrint Fingerprint) uint64 {
 	return myHash
 }
 
+// ja3 is used to create the JA3 fingerprint format (which does not check as
+// many fields and can be more easily spoofed, but... is more widely adopted)
+// from the fingerprint. Info on this format here:
+// https://github.com/salesforce/ja3
+func ja3(myPrint Fingerprint) string {
+	ja3fp := fmt.Sprintf("%d,%s,%s,%s,%s", myPrint.TLSVersion,
+		ja3ByteFormat(myPrint.Ciphersuite), ja3ByteFormat(myPrint.Extensions),
+		ja3ByteFormat(myPrint.ECurves), ja3ByteFormat(myPrint.EcPointFmt))
+	return ja3fp
+}
+
+// ja3ByteFormat reformats a byte array into the decimal-decimal-decimal format used by JA3
+func ja3ByteFormat(input []byte) string {
+	var output string
+	for i := 0; i < len(input); i++ {
+		if i == 0 {
+			output = fmt.Sprintf("%d", input[0:1])
+		} else {
+			output = fmt.Sprintf("%s-%d", output, input[i:i+1])
+		}
+	}
+	return output
+}
+
 // Ftop is to convert between two similar, but not idential structs
 // (fingerprint file, and internal fingerprint storage) which I now want
 // to use interchangably, because I'm a tool.

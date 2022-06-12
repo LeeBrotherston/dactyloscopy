@@ -18,9 +18,8 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 	packetLen := len(buf)
 	var fpHash uint64
 
-	// The minimum may be longer, but shorter than this is definitely a problem ;)
+	// The totally compliance minimum may be longer, but shorter than this is definitely a problem ;)
 	if packetLen < 47 {
-		// Handle an obscenely long packet here
 		invalidTLS("Packet too short!")
 	}
 
@@ -44,11 +43,6 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 
 		thisFingerprint.RecordTLSVersion = make([]byte, 2)
 		copy(thisFingerprint.RecordTLSVersion, buf[1:3])
-
-		//chLen = uint16(buf[3])<<8 + uint16(buf[4])
-
-		//thisFingerprint.TLSVersion = make([]byte, 2)
-		//copy(thisFingerprint.TLSVersion, buf[9:11])
 		thisFingerprint.TLSVersion = buf[9:11]
 
 		// Length of the session id changes to offset for the next bits
@@ -88,8 +82,7 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 		copy(thisFingerprint.Ciphersuite, otherTempCiphersuite)
 
 		// Let's take a lookie see at the compression settings, which are always the same ;)
-		var compressionMethodsLen byte
-		compressionMethodsLen = buf[46+uint16(sessionIDLength)+uint16(ciphersuiteLength)]
+		compressionMethodsLen := buf[46+uint16(sessionIDLength)+uint16(ciphersuiteLength)]
 
 		// Check that this offset doesn't push any pointers past the end of the packet
 		// We do this by taking the current location (compression length field), adding
@@ -130,22 +123,9 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (Fingerprint
 			// This is the extensionType again, but to add to the extensions var for fingerprinting
 			switch uint16(extensionType) {
 			// Lets not add grease to the extension list....
-			case 0x0A0A:
-			case 0x1A1A:
-			case 0x2A2A:
-			case 0x3A3A:
-			case 0x4A4A:
-			case 0x5A5A:
-			case 0x6A6A:
-			case 0x7A7A:
-			case 0x8A8A:
-			case 0x9A9A:
-			case 0xAAAA:
-			case 0xBABA:
-			case 0xCACA:
-			case 0xDADA:
-			case 0xEAEA:
-			case 0xFAFA:
+			case 0x0A0A, 0x1A1A, 0x2A2A, 0x3A3A, 0x4A4A, 0x5A5A,
+				0x6A6A, 0x7A7A, 0x8A8A, 0x9A9A, 0xAAAA,
+				0xBABA, 0xCACA, 0xDADA, 0xEAEA, 0xFAFA:
 				thisFingerprint.Grease = true
 			// Or padding, because it's padding.....
 			case 0x0015:
