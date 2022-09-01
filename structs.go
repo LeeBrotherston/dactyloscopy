@@ -10,7 +10,7 @@ type Fingerprint struct {
 	MessageType       uint8
 	RecordTLSVersion  uint8             //`json:"record_tls_version"`
 	TLSVersion        uint8             //`json:"tls_version"`
-	Ciphersuite       cryptobyte.String //`json:"ciphersuite"`
+	Ciphersuite       []uint16          //`json:"ciphersuite"`
 	Compression       cryptobyte.String //`json:"compression"`
 	Extensions        []uint16          //`json:"extensions"`
 	ECurves           cryptobyte.String //`json:"e_curves"`

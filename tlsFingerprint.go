@@ -6,17 +6,13 @@ import (
 	"golang.org/x/crypto/cryptobyte"
 )
 
-var tempFPCounter int
-
-// Check that lengths are not off the end of the packet, etc XXX TODO
-
 // TLSFingerprint finds the fingerprint that is matched by the provided packet
-func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) error {
+func (f *Fingerprint) ProcessClientHello(buf []byte, fingerprintDBNew map[uint64]string) error {
 	var (
 		thisFingerprint Fingerprint
-		fpHash          uint64
 		uint8Skipsize   uint8
-		uint16Skipsize  uint16
+		ciphersuites    cryptobyte.String
+		extensionBlock  cryptobyte.String
 	)
 
 	// The minimum may be longer, but shorter than this is definitely a problem ;)
@@ -54,14 +50,14 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) error {
 		return fmt.Errorf("could not skip random")
 	}
 
-	if !clientHello.ReadUint16LengthPrefixed((*cryptobyte.String)(&thisFingerprint.Ciphersuite)) {
+	if !clientHello.ReadUint16LengthPrefixed((*cryptobyte.String)(&ciphersuites)) {
 		return fmt.Errorf("could not read ciphersuites")
 	}
 
 	// See if the packet contains any "grease" ciphersuites, which a) we wish to note
 	// and b) we wish to filter out as it will make fingerprints look different (potentially)
 	// as grease patterns are randomized by some clients.
-	thisFingerprint.CiphersuiteVinegar()
+	thisFingerprint.AddCipherSuites(ciphersuites)
 
 	if !clientHello.ReadUint8LengthPrefixed(&thisFingerprint.Compression) {
 		return nil
@@ -69,22 +65,22 @@ func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) error {
 
 	// And now to the really exciting world of extensions.... extensions!!!
 	// Get me them thar extensions!!!!
-	var extensionBlock cryptobyte.String
+
 	if !clientHello.ReadUint16LengthPrefixed(&extensionBlock) {
 		return nil
 	}
+	thisFingerprint.AddExtList(extensionBlock)
 
 	return nil
 }
 
-func (f *Fingerprint) CiphersuiteVinegar() error {
+func (f *Fingerprint) AddCipherSuites(ciphersuites cryptobyte.String) error {
 	var (
 		ciphersuite uint16
-		greasy      cryptobyte.String
 	)
 
-	for !f.Ciphersuite.Empty() {
-		if !f.Ciphersuite.ReadUint16(&ciphersuite) {
+	for !ciphersuites.Empty() {
+		if !ciphersuites.ReadUint16(&ciphersuite) {
 			return fmt.Errorf("could not load ciphersuites")
 		}
 		// This is the extensionType again, but to add to the extensions var for fingerprinting
@@ -99,15 +95,13 @@ func (f *Fingerprint) CiphersuiteVinegar() error {
 		case 0x0015:
 		// But everything else is fine
 		default:
-			// NOPE.... NO MATCHY!!
-			greasy = append(greasy, byte(ciphersuite))
+			f.Ciphersuite = append(f.Ciphersuite, ciphersuite)
 		}
 	}
-	f.Ciphersuite = greasy
 	return nil
 }
 
-func (f *Fingerprint) extensionBlockToList(extBlock cryptobyte.String) error {
+func (f *Fingerprint) AddExtList(extBlock cryptobyte.String) error {
 	for !extBlock.Empty() {
 		var (
 			uint16Skipsize uint16
@@ -128,6 +122,7 @@ func (f *Fingerprint) extensionBlockToList(extBlock cryptobyte.String) error {
 			0xFAFA:
 			f.Grease = true
 			// But everything else is fine
+
 		case 0x0000:
 			// SNI
 			var (
@@ -136,7 +131,7 @@ func (f *Fingerprint) extensionBlockToList(extBlock cryptobyte.String) error {
 			)
 
 			if !extContent.ReadUint16LengthPrefixed(&sni) || !extContent.ReadUint8(&sniType) {
-				return fmt.Errorf("Could not read SNI")
+				return fmt.Errorf("could not read SNI")
 			}
 
 			// Host Type, hopefully.... ever seen any other? :)
@@ -146,10 +141,11 @@ func (f *Fingerprint) extensionBlockToList(extBlock cryptobyte.String) error {
 				sni.ReadUint16LengthPrefixed(nil)
 			}
 			f.Extensions = append(f.Extensions, extensionType)
+
 		case 0x0015:
 			// Padding
 			if !extContent.ReadUint16(&uint16Skipsize) || extContent.Skip(int(uint16Skipsize)) {
-				return fmt.Errorf("Could not skip padding")
+				return fmt.Errorf("could not skip padding")
 			}
 			f.Extensions = append(f.Extensions, extensionType)
 
@@ -159,7 +155,7 @@ func (f *Fingerprint) extensionBlockToList(extBlock cryptobyte.String) error {
 				curveBlock cryptobyte.String
 			)
 			if !extContent.ReadUint16LengthPrefixed(&curveBlock) || !curveBlock.ReadUint16LengthPrefixed(&f.ECurves) {
-				return fmt.Errorf("Could not read elliptic curves")
+				return fmt.Errorf("could not read elliptic curves")
 			}
 			f.Extensions = append(f.Extensions, extensionType)
 
@@ -169,7 +165,7 @@ func (f *Fingerprint) extensionBlockToList(extBlock cryptobyte.String) error {
 				ecPointBlock cryptobyte.String
 			)
 			if !extContent.ReadUint16LengthPrefixed(&ecPointBlock) || !ecPointBlock.ReadUint16LengthPrefixed(&f.EcPointFmt) {
-				return fmt.Errorf("Could not read ecPoint format")
+				return fmt.Errorf("could not read ecPoint format")
 			}
 			f.Extensions = append(f.Extensions, extensionType)
 
@@ -179,7 +175,7 @@ func (f *Fingerprint) extensionBlockToList(extBlock cryptobyte.String) error {
 				signatureAlgoBlock cryptobyte.String
 			)
 			if !extContent.ReadUint16LengthPrefixed(&signatureAlgoBlock) || !signatureAlgoBlock.ReadUint16LengthPrefixed(&f.SigAlg) {
-				return fmt.Errorf("Could not read ecPoint format")
+				return fmt.Errorf("could not read ecPoint format")
 			}
 			f.Extensions = append(f.Extensions, extensionType)
 
@@ -189,13 +185,13 @@ func (f *Fingerprint) extensionBlockToList(extBlock cryptobyte.String) error {
 				supportedVersionsBlock cryptobyte.String
 			)
 			if !extContent.ReadUint16LengthPrefixed(&supportedVersionsBlock) || !supportedVersionsBlock.ReadUint16LengthPrefixed(&f.SupportedVersions) {
-				return fmt.Errorf("Could not read supported versions")
+				return fmt.Errorf("could not read supported versions")
 			}
 			f.Extensions = append(f.Extensions, extensionType)
 
 		default:
 			if !extContent.ReadUint16(&uint16Skipsize) || !extContent.Skip(int(uint16Skipsize)) {
-				return fmt.Errorf("Could not read extension")
+				return fmt.Errorf("could not read extension")
 			}
 			f.Extensions = append(f.Extensions, extensionType)
 		}
