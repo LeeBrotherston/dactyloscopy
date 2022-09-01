@@ -198,3 +198,7 @@ func (f *Fingerprint) AddExtList(extBlock cryptobyte.String) error {
 	}
 	return nil
 }
+
+func (f *Fingerprint) MakeHashes() error {
+	return nil
+}
