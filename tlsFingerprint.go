@@ -7,12 +7,10 @@ import (
 )
 
 // TLSFingerprint finds the fingerprint that is matched by the provided packet
-func (f *Fingerprint) ProcessClientHello(buf []byte, fingerprintDBNew map[uint64]string) error {
+func (f *Fingerprint) ProcessClientHello(buf []byte) error {
 	var (
 		thisFingerprint Fingerprint
 		uint8Skipsize   uint8
-		ciphersuites    cryptobyte.String
-		extensionBlock  cryptobyte.String
 	)
 
 	// The minimum may be longer, but shorter than this is definitely a problem ;)
@@ -31,58 +29,72 @@ func (f *Fingerprint) ProcessClientHello(buf []byte, fingerprintDBNew map[uint64
 
 	// Sweet, looks like a client hello, let's do some pre-processing
 	clientHello := cryptobyte.String(buf)
-	if !clientHello.ReadUint8(&thisFingerprint.MessageType) {
+	if !clientHello.ReadUint8(&f.MessageType) {
 		return fmt.Errorf("could not read message type")
 	}
 
-	if !clientHello.ReadUint8((*uint8)(&thisFingerprint.RecordTLSVersion)) {
+	if !clientHello.ReadUint16((*uint16)(&f.RecordTLSVersion)) {
 		return fmt.Errorf("could not read RecordTLS version")
 	}
 
-	if !clientHello.ReadUint8((*uint8)(&thisFingerprint.TLSVersion)) {
+	// Length, handshake type, and length again
+	clientHello.Skip(6)
+
+	if !clientHello.ReadUint16((*uint16)(&f.TLSVersion)) {
 		return fmt.Errorf("could not read TLS version")
 	}
 
-	if !clientHello.ReadUint8(&uint8Skipsize) {
-		return fmt.Errorf("could not skip random")
-	}
-	if !clientHello.Skip(int(uint8Skipsize)) {
-		return fmt.Errorf("could not skip random")
-	}
+	// Random
+	clientHello.Skip(32)
 
-	if !clientHello.ReadUint16LengthPrefixed((*cryptobyte.String)(&ciphersuites)) {
+	// SessionID
+	clientHello.ReadUint8(&uint8Skipsize)
+	clientHello.Skip(int(uint8Skipsize))
+
+	//if !clientHello.ReadUint16LengthPrefixed((*cryptobyte.String)(&ciphersuites)) {
+	if !clientHello.ReadUint16LengthPrefixed((*cryptobyte.String)(&f.rawSuites)) {
 		return fmt.Errorf("could not read ciphersuites")
 	}
 
 	// See if the packet contains any "grease" ciphersuites, which a) we wish to note
 	// and b) we wish to filter out as it will make fingerprints look different (potentially)
 	// as grease patterns are randomized by some clients.
-	thisFingerprint.AddCipherSuites(ciphersuites)
+	//thisFingerprint.AddCipherSuites(ciphersuites)
+	f.suiteVinegar()
 
-	if !clientHello.ReadUint8LengthPrefixed(&thisFingerprint.Compression) {
+	var (
+		compression     cryptobyte.String
+		compressionItem uint8
+	)
+	if !clientHello.ReadUint8LengthPrefixed(&compression) {
 		return nil
+	}
+	for !compression.Empty() {
+		compression.ReadUint8(&compressionItem)
+		f.Compression = append(f.Compression, compressionItem)
 	}
 
 	// And now to the really exciting world of extensions.... extensions!!!
 	// Get me them thar extensions!!!!
 
-	if !clientHello.ReadUint16LengthPrefixed(&extensionBlock) {
+	if !clientHello.ReadUint16LengthPrefixed(&f.rawExtensions) {
 		return nil
 	}
-	thisFingerprint.AddExtList(extensionBlock)
+	thisFingerprint.AddExtList()
 
 	return nil
 }
 
-func (f *Fingerprint) AddCipherSuites(ciphersuites cryptobyte.String) error {
+func (f *Fingerprint) suiteVinegar() error {
 	var (
 		ciphersuite uint16
 	)
 
-	for !ciphersuites.Empty() {
-		if !ciphersuites.ReadUint16(&ciphersuite) {
+	for !f.rawSuites.Empty() {
+		if !f.rawSuites.ReadUint16(&ciphersuite) {
 			return fmt.Errorf("could not load ciphersuites")
 		}
+
 		// This is the extensionType again, but to add to the extensions var for fingerprinting
 		switch uint16(ciphersuite) {
 		// Lets not add grease to the extension list....
@@ -101,15 +113,15 @@ func (f *Fingerprint) AddCipherSuites(ciphersuites cryptobyte.String) error {
 	return nil
 }
 
-func (f *Fingerprint) AddExtList(extBlock cryptobyte.String) error {
-	for !extBlock.Empty() {
+func (f *Fingerprint) AddExtList() error {
+	for !f.rawExtensions.Empty() {
 		var (
 			uint16Skipsize uint16
 			extensionType  uint16
 			extContent     cryptobyte.String
 		)
 
-		if !extBlock.ReadUint16(&extensionType) || !extBlock.ReadUint16LengthPrefixed(&extContent) {
+		if !f.rawExtensions.ReadUint16(&extensionType) || !f.rawExtensions.ReadUint16LengthPrefixed(&extContent) {
 			return fmt.Errorf("could not read extension")
 		}
 

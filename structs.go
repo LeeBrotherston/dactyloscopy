@@ -4,10 +4,10 @@ import "golang.org/x/crypto/cryptobyte"
 
 type Fingerprint struct {
 	MessageType       uint8             `json:"message_type"`
-	RecordTLSVersion  uint8             `json:"record_tls_version"`
-	TLSVersion        uint8             `json:"tls_version"`
+	RecordTLSVersion  uint16            `json:"record_tls_version"`
+	TLSVersion        uint16            `json:"tls_version"`
 	Ciphersuite       []uint16          `json:"ciphersuite"`
-	Compression       cryptobyte.String `json:"compression"`
+	Compression       []uint8           `json:"compression"`
 	Extensions        []uint16          `json:"extensions"`
 	ECurves           cryptobyte.String `json:"e_curves"`
 	SigAlg            cryptobyte.String `json:"sig_alg"`
@@ -17,4 +17,6 @@ type Fingerprint struct {
 	LB1               string            `json:"lb1"`
 	JA3               string            `json:"ja3"`
 	SNI               cryptobyte.String `json:"sni"`
+	rawSuites         cryptobyte.String
+	rawExtensions     cryptobyte.String
 }
