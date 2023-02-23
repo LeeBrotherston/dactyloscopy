@@ -186,7 +186,7 @@ func (f *Fingerprint) addExtList() error {
 				curve      uint16
 			)
 			if !extContent.ReadUint16LengthPrefixed(&curveBlock) {
-				return fmt.Errorf("could not read elliptic curves")
+				return fmt.Errorf("could not read elliptic curve block")
 			}
 			if !curveBlock.ReadUint16LengthPrefixed(&curves) {
 				return fmt.Errorf("could not read elliptic curves")
@@ -238,7 +238,7 @@ func (f *Fingerprint) addExtList() error {
 			f.Extensions = append(f.Extensions, extensionType)
 
 		default:
-			fmt.Printf("Unused  extension: %d\n", extensionType)
+			fmt.Printf("Unused extension: %d\n", extensionType)
 			if !extContent.ReadUint16(&uint16Skipsize) {
 				return fmt.Errorf("could not read extension size")
 			}
