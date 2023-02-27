@@ -121,10 +121,10 @@ func (f *Fingerprint) suiteVinegar() error {
 func (f *Fingerprint) addExtList() error {
 	for !f.rawExtensions.Empty() {
 		var (
-			uint16Skipsize uint16
-			extensionType  uint16
-			extContent     cryptobyte.String
+			extensionType uint16
+			extContent    cryptobyte.String
 		)
+		//fmt.Printf("DEBUG: %v\n", f.rawExtensions)
 
 		if !f.rawExtensions.ReadUint16(&extensionType) {
 			return fmt.Errorf("could not read extension type")
@@ -134,7 +134,6 @@ func (f *Fingerprint) addExtList() error {
 			return fmt.Errorf("could not read extension content")
 		}
 
-		fmt.Printf("Moo: %d\n", extensionType)
 		// This is the extensionType again, but to add to the extensions var for fingerprinting
 		switch uint16(extensionType) {
 		// Lets not add grease to the extension list....
@@ -148,8 +147,9 @@ func (f *Fingerprint) addExtList() error {
 		case 0x0000:
 			// SNI
 			var (
-				sni     cryptobyte.String
-				sniType uint8
+				sni      cryptobyte.String
+				hostname cryptobyte.String
+				sniType  uint8
 			)
 
 			if !extContent.ReadUint16LengthPrefixed(&sni) {
@@ -162,89 +162,42 @@ func (f *Fingerprint) addExtList() error {
 
 			// Host Type, hopefully.... ever seen any other? :)
 			if sniType == 0 {
-				sni.ReadUint16LengthPrefixed(&f.SNI)
+				sni.ReadUint16LengthPrefixed(&hostname)
 			} else {
 				sni.ReadUint16LengthPrefixed(nil)
 			}
+			f.SNI = string(hostname)
 			f.Extensions = append(f.Extensions, extensionType)
 
+		// The various "lists of stuff" extensions :)
 		case 0x0015:
 			// Padding
-			if !extContent.ReadUint16(&uint16Skipsize) {
-				return fmt.Errorf("could not read padding size")
-			}
-			if !extContent.Skip(int(uint16Skipsize)) {
-				return fmt.Errorf("could not skip padding")
-			}
+			_ = skip16(extContent)
 			f.Extensions = append(f.Extensions, extensionType)
 
 		case 0x000a:
 			// ellipticCurves
-			var (
-				curveBlock cryptobyte.String
-				curves     cryptobyte.String
-				curve      uint16
-			)
-			if !extContent.ReadUint16LengthPrefixed(&curveBlock) {
-				return fmt.Errorf("could not read elliptic curve block")
-			}
-			if !curveBlock.ReadUint16LengthPrefixed(&curves) {
-				return fmt.Errorf("could not read elliptic curves")
-			}
-			for !curves.Empty() {
-				curves.ReadUint16(&curve)
-				f.ECurves = append(f.ECurves, curve)
-
-			}
+			_ = read16Length16Pair(extContent, &f.ECurves)
 			f.Extensions = append(f.Extensions, extensionType)
 
 		case 0x000b:
 			// ecPoint formats
-			var (
-				ecPointBlock cryptobyte.String
-			)
-			if !extContent.ReadUint16LengthPrefixed(&ecPointBlock) {
-				return fmt.Errorf("could not read ecPoint format")
-			}
-			if !ecPointBlock.ReadUint16LengthPrefixed(&f.EcPointFmt) {
-				return fmt.Errorf("could not read ecPoint format")
-			}
+			_ = read16Length8Pair(extContent, &f.EcPointFmt)
 			f.Extensions = append(f.Extensions, extensionType)
 
 		case 0x000d:
 			// Signature algorithms
-			var (
-				signatureAlgoBlock cryptobyte.String
-			)
-			if !extContent.ReadUint16LengthPrefixed(&signatureAlgoBlock) {
-				return fmt.Errorf("could not read ecPoint format")
-			}
-			if !signatureAlgoBlock.ReadUint16LengthPrefixed(&f.SigAlg) {
-				return fmt.Errorf("could not read ecPoint format")
-			}
+			_ = read16Length16Pair(extContent, &f.SigAlg)
 			f.Extensions = append(f.Extensions, extensionType)
 
 		case 0x002b:
 			// Supported versions (new in TLS 1.3... I think)
-			var (
-				supportedVersionsBlock cryptobyte.String
-			)
-			if !extContent.ReadUint16LengthPrefixed(&supportedVersionsBlock) {
-				return fmt.Errorf("could not read supported versions")
-			}
-			if !supportedVersionsBlock.ReadUint16LengthPrefixed(&f.SupportedVersions) {
-				return fmt.Errorf("could not read supported versions")
-			}
+			_ = read16Length16Pair(extContent, &f.SupportedVersions)
 			f.Extensions = append(f.Extensions, extensionType)
 
 		default:
-			fmt.Printf("Unused extension: %d\n", extensionType)
-			if !extContent.ReadUint16(&uint16Skipsize) {
-				return fmt.Errorf("could not read extension size")
-			}
-			if !extContent.Skip(int(uint16Skipsize)) {
-				return fmt.Errorf("could not skip extension content")
-			}
+			//fmt.Printf("Unused extension: %d\n", extensionType)
+			_ = skip16(extContent)
 			f.Extensions = append(f.Extensions, extensionType)
 		}
 	}
