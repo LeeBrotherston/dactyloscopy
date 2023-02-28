@@ -7,14 +7,15 @@ import (
 )
 
 func skip16(data cryptobyte.String) error {
-	var (
-		skipsize uint16
-	)
+	var skipsize uint16 = 0
 	if !data.ReadUint16(&skipsize) {
 		return fmt.Errorf("could not read skip size")
 	}
-	if !data.Skip(int(skipsize)) {
-		return fmt.Errorf("could not skip")
+
+	if skipsize > 0 {
+		if !data.Skip(int(skipsize)) {
+			return fmt.Errorf("could not skip")
+		}
 	}
 	return nil
 }

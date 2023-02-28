@@ -1,7 +1,10 @@
 package dactyloscopy
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"golang.org/x/crypto/cryptobyte"
 )
@@ -172,38 +175,64 @@ func (f *Fingerprint) addExtList() error {
 		// The various "lists of stuff" extensions :)
 		case 0x0015:
 			// Padding
-			_ = skip16(extContent)
+			fmt.Printf("%v\n", skip16(extContent))
 			f.Extensions = append(f.Extensions, extensionType)
 
 		case 0x000a:
 			// ellipticCurves
-			_ = read16Length16Pair(extContent, &f.ECurves)
+			fmt.Printf("%v\n", read16Length16Pair(extContent, &f.ECurves))
 			f.Extensions = append(f.Extensions, extensionType)
 
 		case 0x000b:
 			// ecPoint formats
-			_ = read16Length8Pair(extContent, &f.EcPointFmt)
+			fmt.Printf("%v\n", read16Length8Pair(extContent, &f.EcPointFmt))
 			f.Extensions = append(f.Extensions, extensionType)
 
 		case 0x000d:
 			// Signature algorithms
-			_ = read16Length16Pair(extContent, &f.SigAlg)
+			fmt.Printf("%v\n", read16Length16Pair(extContent, &f.SigAlg))
 			f.Extensions = append(f.Extensions, extensionType)
 
 		case 0x002b:
 			// Supported versions (new in TLS 1.3... I think)
-			_ = read16Length16Pair(extContent, &f.SupportedVersions)
+			fmt.Printf("%v\n", read16Length16Pair(extContent, &f.SupportedVersions))
 			f.Extensions = append(f.Extensions, extensionType)
 
 		default:
 			//fmt.Printf("Unused extension: %d\n", extensionType)
-			_ = skip16(extContent)
+			fmt.Printf("%v\n", skip16(extContent))
 			f.Extensions = append(f.Extensions, extensionType)
 		}
 	}
+
+	f.JA3 = hashMD5(fmt.Sprintf("%d,%s,%s,%s,%s", f.TLSVersion, sliceToDash16(f.Ciphersuite), sliceToDash16(f.Extensions), sliceToDash16(f.ECurves), sliceToDash8(f.EcPointFmt)))
 	return nil
 }
 
 func (f *Fingerprint) MakeHashes() error {
 	return nil
+}
+
+// sliceToDash16 converts a slice of number values and make a dash delimited string representation.. Used for making printable fingerprints.
+func sliceToDash16(input []uint16) string {
+	var outSlice []string
+	for _, i := range input {
+		outSlice = append(outSlice, fmt.Sprintf("%d", i))
+	}
+	return strings.Join(outSlice, "-")
+}
+
+// sliceToDash16 converts a slice of number values and make a dash delimited string representation.. Used for making printable fingerprints.
+func sliceToDash8(input []uint8) string {
+	var outSlice []string
+	for _, i := range input {
+		outSlice = append(outSlice, fmt.Sprintf("%d", i))
+	}
+	return strings.Join(outSlice, "-")
+}
+
+func hashMD5(text string) string {
+	hasher := md5.New()
+	hasher.Write([]byte(text))
+	return hex.EncodeToString(hasher.Sum(nil))
 }
