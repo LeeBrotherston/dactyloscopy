@@ -20,8 +20,8 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
-	"os"
 
 	"github.com/LeeBrotherston/dactyloscopy"
 	"github.com/google/gopacket"
@@ -29,7 +29,6 @@ import (
 )
 
 func doSniff(device string) error {
-
 	// Open device
 	// the 0 and true refer to snaplen and promisc mode.  For now we always want these.
 	handle, err := pcap.OpenLive(device, 0, true, pcap.BlockForever)
@@ -60,12 +59,13 @@ func doSniff(device string) error {
 			return err
 		}
 		fmt.Printf("%s\n", output)
-		//fingerprintOutput, fpDetail, fpHash := dactyloscopy.TLSFingerprint(payload.Payload(), fingerprintDBNew)
-
 	}
 	return nil
 }
 
 func main() {
-	doSniff(os.Args[1])
+	intStr := flag.String("i", "en0", "interface to sniff")
+	flag.Parse()
+
+	doSniff(*intStr)
 }

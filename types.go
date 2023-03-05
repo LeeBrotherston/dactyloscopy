@@ -14,8 +14,8 @@ type Fingerprint struct {
 	EcPointFmt        []uint8  `json:"ec_point_fmt"`
 	Grease            bool     `json:"grease"`
 	SupportedVersions []uint16 `json:"supported_versions"`
-	LB1               string   `json:"lb1"`
-	JA3               string   `json:"ja3"`
+	LB1               string   `json:"lb1,omitempty"`
+	JA3               string   `json:"ja3,omitempty"`
 	SNI               string   `json:"sni"`
 	rawSuites         cryptobyte.String
 	rawExtensions     cryptobyte.String
