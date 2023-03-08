@@ -1,6 +1,5 @@
 # dactyloscopy 
-[![CodeQL](https://github.com/LeeBrotherston/dactyloscopy/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/LeeBrotherston/dactyloscopy/actions/workflows/codeql-analysis.yml)[![golangci-lint](https://github.com/LeeBrotherston/dactyloscopy/actions/workflows/golangci-lint.yml/badge.svg)](https://github.com/LeeBrotherston/dactyloscopy/actions/workflows/golangci-lint.yml)[![Known Vulnerabilities](https://snyk.io/test/github/leebrotherston/dactyloscopy/badge.svg)]
-
+[![CodeQL](https://github.com/LeeBrotherston/dactyloscopy/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/LeeBrotherston/dactyloscopy/actions/workflows/codeql-analysis.yml)[![golangci-lint](https://github.com/LeeBrotherston/dactyloscopy/actions/workflows/golangci-lint.yml/badge.svg)](https://github.com/LeeBrotherston/dactyloscopy/actions/workflows/golangci-lint.yml)
 
 GO package for performing TLS fingerprinting.
 
