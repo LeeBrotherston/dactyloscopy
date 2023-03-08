@@ -1,4 +1,5 @@
-# dactyloscopy
+# dactyloscopy 
+![golangci-lint badge](https://github.com/LeeBrotherston/dactyloscopy/workflows/golangci-lint/badge.svg)![codeql badge](https://github.com/LeeBrotherston/dactyloscopy/workflows/CodeQL/badge.svg)
 
 GO package for performing TLS fingerprinting.
 
