@@ -62,7 +62,10 @@ func (f *Fingerprint) ProcessClientHello(buf []byte) error {
 	// and b) we wish to filter out as it will make fingerprints look different (potentially)
 	// as grease patterns are randomized by some clients.
 	//thisFingerprint.AddCipherSuites(ciphersuites)
-	f.suiteVinegar()
+	err := f.suiteVinegar()
+	if err != nil {
+		return err
+	}
 
 	var (
 		compression     cryptobyte.String
@@ -84,7 +87,7 @@ func (f *Fingerprint) ProcessClientHello(buf []byte) error {
 		return fmt.Errorf("could not read extensions")
 	}
 
-	err := f.addExtList()
+	err = f.addExtList()
 	if err != nil {
 		return err
 	}
@@ -122,6 +125,9 @@ func (f *Fingerprint) suiteVinegar() error {
 }
 
 func (f *Fingerprint) addExtList() error {
+	var (
+		err error
+	)
 	for !f.rawExtensions.Empty() {
 		var (
 			extensionType uint16
@@ -205,7 +211,10 @@ func (f *Fingerprint) addExtList() error {
 		}
 	}
 
-	f.JA3 = hashMD5(fmt.Sprintf("%d,%s,%s,%s,%s", f.TLSVersion, sliceToDash16(f.Ciphersuite), sliceToDash16(f.Extensions), sliceToDash16(f.ECurves), sliceToDash8(f.EcPointFmt)))
+	f.JA3, err = hashMD5(fmt.Sprintf("%d,%s,%s,%s,%s", f.TLSVersion, sliceToDash16(f.Ciphersuite), sliceToDash16(f.Extensions), sliceToDash16(f.ECurves), sliceToDash8(f.EcPointFmt)))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -231,8 +240,11 @@ func sliceToDash8(input []uint8) string {
 	return strings.Join(outSlice, "-")
 }
 
-func hashMD5(text string) string {
+func hashMD5(text string) (string, error) {
 	hasher := md5.New()
-	hasher.Write([]byte(text))
-	return hex.EncodeToString(hasher.Sum(nil))
+	_, err := hasher.Write([]byte(text))
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
