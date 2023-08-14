@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"strings"
 
 	"golang.org/x/crypto/cryptobyte"
 )
@@ -220,24 +219,6 @@ func (f *Fingerprint) addExtList() error {
 
 func (f *Fingerprint) MakeHashes() error {
 	return nil
-}
-
-// sliceToDash16 converts a slice of number values and make a dash delimited string representation.. Used for making printable fingerprints.
-func sliceToDash16(input []uint16) string {
-	var outSlice []string
-	for _, i := range input {
-		outSlice = append(outSlice, fmt.Sprintf("%d", i))
-	}
-	return strings.Join(outSlice, "-")
-}
-
-// sliceToDash16 converts a slice of number values and make a dash delimited string representation.. Used for making printable fingerprints.
-func sliceToDash8(input []uint8) string {
-	var outSlice []string
-	for _, i := range input {
-		outSlice = append(outSlice, fmt.Sprintf("%d", i))
-	}
-	return strings.Join(outSlice, "-")
 }
 
 func hashMD5(text string) (string, error) {

@@ -2,6 +2,7 @@ package dactyloscopy
 
 import (
 	"fmt"
+	"strings"
 
 	"golang.org/x/crypto/cryptobyte"
 )
@@ -50,4 +51,24 @@ func read16Length8Pair(dataBlock cryptobyte.String, output *[]uint8) error {
 		*output = append(*output, singleValue)
 	}
 	return nil
+}
+
+// sliceToDash16 converts a slice of number values and make a dash delimited
+// string representation.. Used for making printable fingerprints.
+func sliceToDash16(input []uint16) string {
+	var outSlice []string
+	for _, i := range input {
+		outSlice = append(outSlice, fmt.Sprintf("%d", i))
+	}
+	return strings.Join(outSlice, "-")
+}
+
+// sliceToDash8 converts a slice of number values and make a dash delimited
+// string representation.. Used for making printable fingerprints.
+func sliceToDash8(input []uint8) string {
+	var outSlice []string
+	for _, i := range input {
+		outSlice = append(outSlice, fmt.Sprintf("%d", i))
+	}
+	return strings.Join(outSlice, "-")
 }

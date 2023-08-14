@@ -16,7 +16,10 @@ type Fingerprint struct {
 	SupportedVersions []uint16 `json:"supported_versions"`
 	LB1               string   `json:"lb1,omitempty"`
 	JA3               string   `json:"ja3,omitempty"`
-	SNI               string   `json:"sni"`
+	SNI               string   `json:"sni,omitempty"`
 	rawSuites         cryptobyte.String
 	rawExtensions     cryptobyte.String
+}
+
+type clientHello struct {
 }
