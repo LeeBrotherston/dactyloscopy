@@ -1,373 +1,231 @@
 package dactyloscopy
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
-	"log"
-	"strconv"
+
+	"golang.org/x/crypto/cryptobyte"
 )
 
-var tempFPCounter int
-
-// Check that lengths are not off the end of the packet, etc XXX TODO
-
 // TLSFingerprint finds the fingerprint that is matched by the provided packet
-func TLSFingerprint(buf []byte, fingerprintDBNew map[uint64]string) (FingerprintOutput, Fingerprint, uint64) {
-
-	var output FingerprintOutput
-	var thisFingerprint Fingerprint
-	packetLen := len(buf)
-	var fpHash uint64
+func (f *Fingerprint) ProcessClientHello(buf []byte) error {
+	var (
+		uint8Skipsize uint8
+	)
 
 	// The minimum may be longer, but shorter than this is definitely a problem ;)
-	if packetLen < 47 {
-		// Handle an obscenely long packet here
-		invalidTLS("Packet too short!")
+	if len(buf) < 47 {
+		return fmt.Errorf("packet appears to be truncated")
 	}
 
-	if buf[0] == 22 && buf[5] == 1 && buf[1] == 3 && buf[9] == 3 {
-		// This is the Lee acid test for is this a TLS client hello packet
-		// The "science" behind it is here:
-		// https://speakerdeck.com/leebrotherston/stealthier-attacks-and-smarter-defending-with-tls-fingerprinting?slide=31
-
-		// buf[0] == TLS Handshake
-		// buf[5] == Client Hello
-		// buf[1] == Record TLS Version
-		// buf[9] == TLS Version
-
-		// Sweet, looks like a client hello, let's do some pre-processing
-
-		var sessionIDLength byte
-		var ciphersuiteLength uint16
-		//var chLen uint16
-		var i uint16
-		destination := ""
-
-		thisFingerprint.RecordTLSVersion = make([]byte, 2)
-		copy(thisFingerprint.RecordTLSVersion, buf[1:3])
-
-		//chLen = uint16(buf[3])<<8 + uint16(buf[4])
-
-		//thisFingerprint.TLSVersion = make([]byte, 2)
-		//copy(thisFingerprint.TLSVersion, buf[9:11])
-		thisFingerprint.TLSVersion = buf[9:11]
-
-		// Length of the session id changes to offset for the next bits
-		sessionIDLength = buf[43]
-
-		// ciphersuite Length also determines some offsets
-		// This doesn't feel like a very GO'y way of doing this!
-		ciphersuiteLength = uint16(buf[44+sessionIDLength]) << 8
-		ciphersuiteLength += uint16(buf[45+sessionIDLength])
-
-		// Check that this offset doesn't push any pointers past the end of the packet
-		// We do this by taking the current location (ciphersuite length field), adding
-		// the ciphersuite length value on, and seeing if this exceeds the total length
-		// of the packet being examined.
-		if int(ciphersuiteLength+uint16(45)+uint16(sessionIDLength)) > packetLen {
-			invalidTLS("ciphersuite length longer than total packet")
-		}
-
-		// OK let's get dem ciphersuites, yo...
-		tempCiphersuite := make([]byte, uint16(ciphersuiteLength))
-		if uint16(copy(tempCiphersuite, buf[(46+uint16(sessionIDLength)):(46+uint16(sessionIDLength)+ciphersuiteLength)])) != ciphersuiteLength {
-			log.Printf("Debug: Ciphersuite copy lengths seem wrong\n")
-		}
-
-		// See if the packet contains any "grease" ciphersuites, which a) we wish to note
-		// and b) we wish to filter out as it will make fingerprints look different (potentially)
-		// as grease patterns are randomized by some clients.
-		shrinkBy, otherTempCiphersuite := deGrease(tempCiphersuite)
-		if shrinkBy > 0 {
-			thisFingerprint.Grease = true
-		}
-
-		// Reconstruct the packet around the new ciphersuites if grease suites have been stripped out
-		// as this will alter the length, etc
-		greaseCiphersuiteLength := ciphersuiteLength - uint16(shrinkBy*2)
-		thisFingerprint.Ciphersuite = make([]byte, uint16(greaseCiphersuiteLength))
-		copy(thisFingerprint.Ciphersuite, otherTempCiphersuite)
-
-		// Let's take a lookie see at the compression settings, which are always the same ;)
-		var compressionMethodsLen byte
-		compressionMethodsLen = buf[46+uint16(sessionIDLength)+uint16(ciphersuiteLength)]
-
-		// Check that this offset doesn't push any pointers past the end of the packet
-		// We do this by taking the current location (compression length field), adding
-		// the compression length value on, and seeing if this exceeds the total length
-		// of the packet being examined.
-		if int(uint16(46)+uint16(sessionIDLength)+uint16(ciphersuiteLength)+uint16(compressionMethodsLen)) > packetLen {
-			invalidTLS("compression methods length longer than total packet")
-		}
-
-		// XXX move to using copy like ciphersuites
-		thisFingerprint.Compression = make([]byte, uint16(compressionMethodsLen))
-		for i = 0; i < uint16(compressionMethodsLen); i++ {
-			thisFingerprint.Compression[i] = buf[47+uint16(sessionIDLength)+ciphersuiteLength]
-		}
-
-		// And now to the really exciting world of extensions.... extensions!!!
-		// Get me them thar extensions!!!!
-		var extensionsLength uint16
-		extensionsLength = uint16(uint16(buf[47+uint16(sessionIDLength)+uint16(ciphersuiteLength)+uint16(compressionMethodsLen)]) << 8)
-		extensionsLength += uint16(buf[48+uint16(sessionIDLength)+uint16(ciphersuiteLength)+uint16(compressionMethodsLen)])
-
-		// Check that this offset doesn't push any pointers past the end of the packet
-		// We do this by taking the current location (extensions length field), adding
-		// the extensions length value on, and seeing if this exceeds the total length
-		// of the packet being examined.
-		if int(48+uint16(sessionIDLength)+uint16(ciphersuiteLength)+uint16(compressionMethodsLen)+extensionsLength) > packetLen {
-			invalidTLS("extensions section length longer than total packet")
-		}
-
-		offset := 49 + uint16(sessionIDLength) + uint16(ciphersuiteLength) + uint16(compressionMethodsLen)
-		for i = 0; i < extensionsLength; i++ {
-			var extensionType uint16
-			//var increment uint16
-
-			extensionType = uint16(buf[offset+i]) << 8
-			extensionType += uint16(buf[offset+i+1])
-
-			// This is the extensionType again, but to add to the extensions var for fingerprinting
-			switch uint16(extensionType) {
-			// Lets not add grease to the extension list....
-			case 0x0A0A:
-			case 0x1A1A:
-			case 0x2A2A:
-			case 0x3A3A:
-			case 0x4A4A:
-			case 0x5A5A:
-			case 0x6A6A:
-			case 0x7A7A:
-			case 0x8A8A:
-			case 0x9A9A:
-			case 0xAAAA:
-			case 0xBABA:
-			case 0xCACA:
-			case 0xDADA:
-			case 0xEAEA:
-			case 0xFAFA:
-				thisFingerprint.Grease = true
-			// Or padding, because it's padding.....
-			case 0x0015:
-			// But everything else is fine
-			default:
-				thisFingerprint.Extensions = append(thisFingerprint.Extensions, buf[offset+i], buf[offset+i+1])
-			}
-
-			// Move counter to start of extension
-			i += 2
-
-			switch uint16(extensionType) {
-
-			case 0x0000:
-				// Server Name Indication (SNI) extension2
-				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
-				if int(offset+i+extLength) > packetLen {
-					// Check that this offset doesn't push any pointers past the end of the packet
-					// We do this by taking the current location, adding the extension's length
-					// value on, and seeing if this exceeds the total length of the packet being
-					//  examined.
-					invalidTLS("Extension length exceeds total packet length")
-				}
-
-				// Check internal length pointer
-				if (uint16(buf[offset+i+2])<<8 + uint16(buf[offset+i+3])) != (extLength - 2) {
-					log.Printf("Problem: Internal servername pointer length incorrect %v %v %v %v\n", extLength, i, buf[offset+i+2], buf[offset+i+3])
-					invalidTLS("SNI length incorrect")
-				}
-				// Check this is "hostname" type
-				if buf[offset+i+4] != 0 {
-					fmt.Printf("Problem: Not hostname based SNI... or something... wat?\n")
-				}
-				// And the internal internal yadda yadda length check (W T A F ?)
-				if (uint16(buf[offset+i+5])<<8 + uint16(buf[offset+i+6])) != (extLength - 5) {
-					log.Printf("Problem: Other internal servername pointer length incorrect %v %v\n", extLength, i)
-				}
-
-				hostnameLength := uint16(buf[offset+i+5])<<8 + uint16(buf[offset+i+6])
-
-				hostname := make([]byte, hostnameLength)
-
-				if hostnameLength != uint16(copy(hostname, buf[offset+i+7:offset+i+7+hostnameLength])) {
-					log.Printf("Problem: failed to copy hostname: %v - %v - %v\n", hostnameLength,
-						copy(hostname, buf[offset+i+7:offset+i+7+hostnameLength]),
-						hostname)
-				}
-
-				destination = string(hostname) + ":" + "443"
-
-				output.Destination = []byte(destination)
-				output.Hostname = hostname
-
-				// Set the i pointer
-				i += extLength + 1
-
-			case 0x0015:
-				// This is padding, we ignore padding.
-				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
-				if int(offset+i+extLength) > packetLen {
-					// Check that this offset doesn't push any pointers past the end of the packet
-					// We do this by taking the current location, adding the extension's length
-					// value on, and seeing if this exceeds the total length of the packet being
-					//  examined.
-					invalidTLS("Extension length exceeds total packet length")
-				}
-				i += extLength + 1
-
-			case 0x000a:
-				/* ellipticCurves */
-				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
-				if int(offset+i+extLength) > packetLen {
-					// Check that this offset doesn't push any pointers past the end of the packet
-					// We do this by taking the current location, adding the extension's length
-					// value on, and seeing if this exceeds the total length of the packet being
-					//  examined.
-					invalidTLS("Extension length exceeds total packet length")
-				}
-
-				// Check internal Length
-				if (uint16(buf[offset+i+2])<<8 + uint16(buf[offset+i+3])) != (extLength - 2) {
-					log.Printf("Problem: Internal elliptic curves pointer length incorrect\n")
-				}
-
-				ellipticCurvesLength := uint16(buf[offset+i+2])<<8 + uint16(buf[offset+i+3])
-				tempeCurves := make([]byte, ellipticCurvesLength)
-
-				copy(tempeCurves, buf[offset+i+4:offset+i+4+ellipticCurvesLength])
-				shrinkBy, otherTempeCurves := deGrease(tempeCurves)
-				if shrinkBy > 0 {
-					thisFingerprint.Grease = true
-				}
-				greaseeCurvesLength := ellipticCurvesLength - uint16(shrinkBy*2)
-
-				thisFingerprint.ECurves = make([]byte, greaseeCurvesLength)
-				if greaseeCurvesLength != uint16(copy(thisFingerprint.ECurves, otherTempeCurves)) {
-					log.Printf("Problem: failed to copy ellipticCurves\n")
-				}
-
-				// Set the i pointer
-				i += extLength + 1
-
-			case 0x000b:
-				/* ecPoint formats */
-				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
-				if int(offset+i+extLength) > packetLen {
-					// Check that this offset doesn't push any pointers past the end of the packet
-					// We do this by taking the current location, adding the extension's length
-					// value on, and seeing if this exceeds the total length of the packet being
-					//  examined.
-					invalidTLS("Extension length exceeds total packet length")
-				}
-
-				// ecPoint is only an 8bit length, stored at uint16 to make comparison easier
-				ecPointLength := uint16(uint8(buf[offset+i+2]))
-
-				thisFingerprint.EcPointFmt = make([]byte, ecPointLength)
-				if ecPointLength != uint16(copy(thisFingerprint.EcPointFmt, buf[offset+i+3:offset+i+3+ecPointLength])) {
-					log.Printf("Problem: failed to copy ecPoint\n")
-				}
-
-				// Set the i pointer
-				i += extLength + 1
-
-			case 0x000d:
-				/* Signature algorithms */
-				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
-				if int(offset+i+extLength) > packetLen {
-					// Check that this offset doesn't push any pointers past the end of the packet
-					// We do this by taking the current location, adding the extension's length
-					// value on, and seeing if this exceeds the total length of the packet being
-					//  examined.
-					invalidTLS("Extension length exceeds total packet length")
-				}
-
-				sigAlgLength := uint16(buf[offset+i+2])<<8 + uint16(buf[offset+i+3])
-
-				thisFingerprint.SigAlg = make([]byte, sigAlgLength)
-
-				if sigAlgLength != uint16(copy(thisFingerprint.SigAlg, buf[(offset+i+4):(offset+i+4+sigAlgLength)])) {
-					log.Printf("Problem: failed to copy sigAlg\n")
-				} else {
-					//log.Printf("sigAlg: %#x\n", sigAlg)
-				}
-
-				i += extLength + 1
-
-			case 0x002b:
-				/* Supported versions (new in TLS 1.3... I think) */
-				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
-				if int(offset+i+extLength) > packetLen {
-					// Check that this offset doesn't push any pointers past the end of the packet
-					// We do this by taking the current location, adding the extension's length
-					// value on, and seeing if this exceeds the total length of the packet being
-					//  examined.
-					invalidTLS("Extension length exceeds total packet length")
-				}
-
-				supportedVersionsLength := uint16(uint8(buf[offset+i+2]))
-
-				thisFingerprint.SupportedVersions = make([]byte, supportedVersionsLength)
-
-				if supportedVersionsLength != uint16(copy(thisFingerprint.SupportedVersions, buf[(offset+i+4):(offset+i+4+supportedVersionsLength)])) {
-					log.Printf("Problem: failed to copy supportedVersions\n")
-				} else {
-					//log.Printf("sigAlg: %#x\n", sigAlg)
-				}
-
-				i += extLength + 1
-
-			default:
-				// Move i to the extension
-				// Special cases will have to place i themselves for $reasons :)
-				extLength := uint16(buf[offset+i])<<8 + uint16(buf[offset+i+1])
-				if int(offset+i+extLength) > packetLen {
-					// Check that this offset doesn't push any pointers past the end of the packet
-					// We do this by taking the current location, adding the extension's length
-					// value on, and seeing if this exceeds the total length of the packet being
-					//  examined.
-					invalidTLS("Extension length exceeds total packet length")
-				}
-				i += extLength + 1
-
-			}
-
-		}
-
-		fingerprintName, fpExist, fpHashTmp := lookup(thisFingerprint, fingerprintDBNew)
-		fpHash = fpHashTmp //  This is stupid, I should neaten this up
-		output.FingerprintName = fingerprintName
-
-		if fpExist {
-			log.Printf("Client Fingerprint: %v\n", fingerprintName)
-		} else {
-			// Add the fingerprint
-			tempFPCounter++
-			thisFingerprint.Desc = "Temp fingerprint " + strconv.Itoa(tempFPCounter)
-			Add(thisFingerprint, fingerprintDBNew)
-
-			log.Printf("Unidentified client fingerprint.\n")
-
-			//log.Printf("New Fingerprint added to: %v\n", globalConfig.NewFPFile)
-
-			// XXX Add to the new fingerprints file
-			//fmt.Fprintf(globalConfig.fpFile, "{\"id\": %v, \"desc\": \"%v\",  \"record_tls_version\": \"%#x\", \"tls_version\": \"%#x\",  \"ciphersuite_length\": \"%#x\",  \"ciphersuite\": \"%#x\",  \"compression_length\": \"%v\",  \"compression\": \"%#x\",  \"extensions\": \"%#x\" , \"e_curves\": \"%#x\" , \"sig_alg\": \"%#x\" , \"ec_point_fmt\": \"%#x\", \"grease\": %v }\n",
-			//	strconv.Itoa(tempFPCounter), "Temp fingerprint connection: "+destination, thisFingerprint.recordTLSVersion,
-			//	thisFingerprint.TLSVersion, ciphersuiteLength,
-			//	thisFingerprint.ciphersuite, compressionMethodsLen,
-			//	thisFingerprint.compression, thisFingerprint.extensions,
-			//	thisFingerprint.eCurves, thisFingerprint.sigAlg,
-			//	thisFingerprint.ecPointFmt, thisFingerprint.grease)
-
-		}
-
+	// This is a very quick and dirty acid test for is this a TLS client hello packet.
+	// The "science" behind it is here:
+	// https://speakerdeck.com/leebrotherston/stealthier-attacks-and-smarter-defending-with-tls-fingerprinting?slide=31
+	// buf[0] == TLS Handshake buf[5] == Client Hello buf[1] == Record TLS Version
+	// buf[9] == TLS Version
+	if !(buf[0] == 22 && buf[5] == 1 && buf[1] == 3 && buf[9] == 3) {
+		return fmt.Errorf("does not look like a client hello")
 	}
-	//log.Printf("Ending tlsFingerprint function: %v", output)
-	return output, thisFingerprint, fpHash
+
+	// Sweet, looks like a client hello, let's do some pre-processing
+	clientHello := cryptobyte.String(buf)
+	if !clientHello.ReadUint8(&f.MessageType) {
+		return fmt.Errorf("could not read message type")
+	}
+
+	if !clientHello.ReadUint16((*uint16)(&f.RecordTLSVersion)) {
+		return fmt.Errorf("could not read RecordTLS version")
+	}
+
+	// Length, handshake type, and length again
+	clientHello.Skip(6)
+
+	if !clientHello.ReadUint16((*uint16)(&f.TLSVersion)) {
+		return fmt.Errorf("could not read TLS version")
+	}
+
+	// Random
+	clientHello.Skip(32)
+
+	// SessionID
+	clientHello.ReadUint8(&uint8Skipsize)
+	clientHello.Skip(int(uint8Skipsize))
+
+	//if !clientHello.ReadUint16LengthPrefixed((*cryptobyte.String)(&ciphersuites)) {
+	if !clientHello.ReadUint16LengthPrefixed(&f.rawSuites) {
+		return fmt.Errorf("could not read ciphersuites")
+	}
+
+	// See if the packet contains any "grease" ciphersuites, which a) we wish to note
+	// and b) we wish to filter out as it will make fingerprints look different (potentially)
+	// as grease patterns are randomized by some clients.
+	//thisFingerprint.AddCipherSuites(ciphersuites)
+	err := f.suiteVinegar()
+	if err != nil {
+		return err
+	}
+
+	var (
+		compression     cryptobyte.String
+		compressionItem uint8
+	)
+	if !clientHello.ReadUint8LengthPrefixed(&compression) {
+		return fmt.Errorf("could not read compression")
+	}
+
+	for !compression.Empty() {
+		compression.ReadUint8(&compressionItem)
+		f.Compression = append(f.Compression, compressionItem)
+	}
+
+	// And now to the really exciting world of extensions.... extensions!!!
+	// Get me them thar extensions!!!!
+
+	if !clientHello.ReadUint16LengthPrefixed(&f.rawExtensions) {
+		return fmt.Errorf("could not read extensions")
+	}
+
+	err = f.addExtList()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// invalidTLS is a function to perform standard actions on an invalidTLS packet.  This could
-// be because it is malformed, or simply mis-detected as TLS when it infact isn't, thus most
-// likely this will remain a logging function
-func invalidTLS(errorMsg string) {
-	log.Printf("Invalid TLS Packet: %s\n", errorMsg)
+// suiteVinegar removes grease from the ciphersuites 😜
+func (f *Fingerprint) suiteVinegar() error {
+	var (
+		ciphersuite uint16
+	)
+
+	for !f.rawSuites.Empty() {
+		if !f.rawSuites.ReadUint16(&ciphersuite) {
+			return fmt.Errorf("could not load ciphersuites")
+		}
+
+		// This is the extensionType again, but to add to the extensions var for fingerprinting
+		switch uint16(ciphersuite) {
+		// Lets not add grease to the extension list....
+		case 0x0A0A, 0x1A1A, 0x2A2A, 0x3A3A, 0x4A4A,
+			0x5A5A, 0x6A6A, 0x7A7A, 0x8A8A, 0x9A9A,
+			0xAAAA, 0xBABA, 0xCACA, 0xDADA, 0xEAEA,
+			0xFAFA:
+			f.Grease = true
+		// Or padding, because it's padding.....
+		case 0x0015:
+		// But everything else is fine
+		default:
+			f.Ciphersuite = append(f.Ciphersuite, ciphersuite)
+		}
+	}
+	return nil
+}
+
+func (f *Fingerprint) addExtList() error {
+	var (
+		err error
+	)
+	for !f.rawExtensions.Empty() {
+		var (
+			extensionType uint16
+			extContent    cryptobyte.String
+		)
+		//fmt.Printf("DEBUG: %v\n", f.rawExtensions)
+
+		if !f.rawExtensions.ReadUint16(&extensionType) {
+			return fmt.Errorf("could not read extension type")
+		}
+
+		if !f.rawExtensions.ReadUint16LengthPrefixed(&extContent) {
+			return fmt.Errorf("could not read extension content")
+		}
+
+		// This is the extensionType again, but to add to the extensions var for fingerprinting
+		switch uint16(extensionType) {
+		// Lets not add grease to the extension list....
+		case 0x0A0A, 0x1A1A, 0x2A2A, 0x3A3A, 0x4A4A,
+			0x5A5A, 0x6A6A, 0x7A7A, 0x8A8A, 0x9A9A,
+			0xAAAA, 0xBABA, 0xCACA, 0xDADA, 0xEAEA,
+			0xFAFA:
+			f.Grease = true
+			// But everything else is fine
+
+		case 0x0000:
+			// SNI
+			var (
+				sni      cryptobyte.String
+				hostname cryptobyte.String
+				sniType  uint8
+			)
+
+			if !extContent.ReadUint16LengthPrefixed(&sni) {
+				return fmt.Errorf("could not read SNI")
+			}
+
+			if !sni.ReadUint8(&sniType) {
+				return fmt.Errorf("could not read SNI type")
+			}
+
+			// Host Type, hopefully.... ever seen any other? :)
+			if sniType == 0 {
+				sni.ReadUint16LengthPrefixed(&hostname)
+			} else {
+				sni.ReadUint16LengthPrefixed(nil)
+			}
+			f.SNI = string(hostname)
+			f.Extensions = append(f.Extensions, extensionType)
+
+		// The various "lists of stuff" extensions :)
+		case 0x0015:
+			// Padding
+			fmt.Printf("%v\n", skip16(extContent))
+			f.Extensions = append(f.Extensions, extensionType)
+
+		case 0x000a:
+			// ellipticCurves
+			fmt.Printf("%v\n", read16Length16Pair(extContent, &f.ECurves))
+			f.Extensions = append(f.Extensions, extensionType)
+
+		case 0x000b:
+			// ecPoint formats
+			fmt.Printf("%v\n", read16Length8Pair(extContent, &f.EcPointFmt))
+			f.Extensions = append(f.Extensions, extensionType)
+
+		case 0x000d:
+			// Signature algorithms
+			fmt.Printf("%v\n", read16Length16Pair(extContent, &f.SigAlg))
+			f.Extensions = append(f.Extensions, extensionType)
+
+		case 0x002b:
+			// Supported versions (new in TLS 1.3... I think)
+			fmt.Printf("%v\n", read16Length16Pair(extContent, &f.SupportedVersions))
+			f.Extensions = append(f.Extensions, extensionType)
+
+		default:
+			//fmt.Printf("Unused extension: %d\n", extensionType)
+			fmt.Printf("%v\n", skip16(extContent))
+			f.Extensions = append(f.Extensions, extensionType)
+		}
+	}
+
+	f.JA3, err = hashMD5(fmt.Sprintf("%d,%s,%s,%s,%s", f.TLSVersion, sliceToDash16(f.Ciphersuite), sliceToDash16(f.Extensions), sliceToDash16(f.ECurves), sliceToDash8(f.EcPointFmt)))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *Fingerprint) MakeHashes() error {
+	return nil
+}
+
+func hashMD5(text string) (string, error) {
+	hasher := md5.New()
+	_, err := hasher.Write([]byte(text))
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }

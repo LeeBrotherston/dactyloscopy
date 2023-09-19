@@ -1,5 +1,5 @@
 module github.com/LeeBrotherston/dactyloscopy
 
-go 1.16
+go 1.18
 
-require github.com/spaolacci/murmur3 v1.1.0
+require golang.org/x/crypto v0.6.0
