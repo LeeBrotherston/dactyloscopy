@@ -20,6 +20,3 @@ type Fingerprint struct {
 	rawSuites         cryptobyte.String
 	rawExtensions     cryptobyte.String
 }
-
-type clientHello struct {
-}

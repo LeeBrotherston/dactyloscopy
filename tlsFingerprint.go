@@ -210,7 +210,14 @@ func (f *Fingerprint) addExtList() error {
 		}
 	}
 
-	f.JA3, err = hashMD5(fmt.Sprintf("%d,%s,%s,%s,%s", f.TLSVersion, sliceToDash16(f.Ciphersuite), sliceToDash16(f.Extensions), sliceToDash16(f.ECurves), sliceToDash8(f.EcPointFmt)))
+	// The official JA3 libraries seem to use 0 when EcPointFmt is empty instead
+	// of leaving the field blank, so we will do this to remain compatible
+	if len(f.EcPointFmt) == 0 {
+		f.EcPointFmt = append(f.EcPointFmt, 0)
+	}
+	unhashed := fmt.Sprintf("%d,%s,%s,%s,%s", f.TLSVersion, sliceToDash16(f.Ciphersuite), sliceToDash16(f.Extensions), sliceToDash16(f.ECurves), sliceToDash8(f.EcPointFmt))
+	fmt.Printf("thing: %s\n", unhashed)
+	f.JA3, err = hashMD5(unhashed)
 	if err != nil {
 		return err
 	}
