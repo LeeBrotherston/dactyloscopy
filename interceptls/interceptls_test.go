@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	interceptls "github.com/leebrotherston/dactyloscopy/inteceptls"
+	interceptls "github.com/leebrotherston/dactyloscopy/interceptls"
 	"github.com/stretchr/testify/require"
 )
 

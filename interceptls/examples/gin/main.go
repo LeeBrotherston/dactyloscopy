@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	interceptls "github.com/leebrotherston/dactyloscopy/inteceptls"
+	interceptls "github.com/leebrotherston/dactyloscopy/interceptls"
 )
 
 // === Main ===

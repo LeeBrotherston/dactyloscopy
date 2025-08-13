@@ -15,7 +15,7 @@ import (
 	"net/http"
 	"time"
 
-	interceptls "github.com/leebrotherston/dactyloscopy/inteceptls"
+	interceptls "github.com/leebrotherston/dactyloscopy/interceptls"
 )
 
 // === Main ===

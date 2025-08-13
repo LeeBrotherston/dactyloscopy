@@ -86,7 +86,7 @@ func (f *Fingerprint) parseClientHello(clientHello *cryptobyte.String) error {
 
 	// Length, handshake type, and length again
 	if !clientHello.Skip(6) {
-		return fmt.Errorf("could not skip over lenth and handshake type")
+		return fmt.Errorf("could not skip over length and handshake type")
 	}
 
 	if !clientHello.ReadUint16((*uint16)(&f.TLSVersion)) {
@@ -105,9 +105,12 @@ func (f *Fingerprint) parseClientHello(clientHello *cryptobyte.String) error {
 		return fmt.Errorf("could not read session id size")
 	}
 	if uint8Skipsize > 0 {
+		f.SessionID = true
 		if !clientHello.Skip(int(uint8Skipsize)) {
 			return fmt.Errorf("could not skip over session id, progress=[%d/%d]", start, clientHello)
 		}
+	} else {
+		f.SessionID = false
 	}
 
 	//if !clientHello.ReadUint16LengthPrefixed((*cryptobyte.String)(&ciphersuites)) {
@@ -143,11 +146,6 @@ func (f *Fingerprint) parseClientHello(clientHello *cryptobyte.String) error {
 	if err != nil {
 		return fmt.Errorf("could not copy extensions section")
 	}
-	/*
-		if !clientHello.ReadUint16LengthPrefixed(&f.rawExtensions) {
-			return fmt.Errorf("could not read extensions section")
-		}
-	*/
 
 	err = f.addExtList()
 	if err != nil {
@@ -304,6 +302,7 @@ func (f *Fingerprint) generateJA4() error {
 	if alpnList != "-" && alpnList != "" {
 		alpnHash, _ = hashSHA256(alpnList)
 	}
+
 	// Final JA4 string: base + ,ciphers_sha256,extensions_sha256,alpn_sha256
 	JA4 = fmt.Sprintf("%s,%s,%s,%s", JA4, ciphersHash, extensionsHash, alpnHash)
 

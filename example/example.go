@@ -29,14 +29,14 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/ip4defrag"
 	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcap"
+	"github.com/google/gopacket/pcapgo"
 	"github.com/google/gopacket/tcpassembly"
 	"github.com/google/gopacket/tcpassembly/tcpreader"
 )
 
 func doSniff(device string, file string) error {
 	var (
-		handle *pcap.Handle
+		handle gopacket.PacketDataSource
 		err    error
 	)
 	if len(file) > 0 {
@@ -44,34 +44,28 @@ func doSniff(device string, file string) error {
 		if err != nil {
 			return err
 		}
-		handle, err = pcap.OpenOfflineFile(pcapFile)
+		r, err := pcapgo.NewReader(pcapFile)
 		if err != nil {
 			return err
 		}
+		handle = r
 	} else if len(device) > 0 {
-		// Open device
-		// the 0 and true refer to snaplen and promisc mode.  For now we always want these.
-		handle, err = pcap.OpenLive(device, 0, true, pcap.BlockForever)
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("live capture not supported in Go-native mode; use a pcap file")
 	} else {
 		return fmt.Errorf("need a file or interface")
 	}
-	// Yes yes, I know... But offsetting this to the kernel *drastically* reduces processing time
-	//err = handle.SetBPFFilter("((tcp[tcp[12]/16*4]=22 and (tcp[tcp[12]/16*4+5]=1) and (tcp[tcp[12]/16*4+9]=3) and (tcp[tcp[12]/16*4+1]=3)) or (ip6[(ip6[52]/16*4)+40]=22 and (ip6[(ip6[52]/16*4+5)+40]=1) and (ip6[(ip6[52]/16*4+9)+40]=3) and (ip6[(ip6[52]/16*4+1)+40]=3)) or ((udp[14] = 6 and udp[16] = 32 and udp[17] = 1) and ((udp[(udp[60]/16*4)+48]=22) and (udp[(udp[60]/16*4)+53]=1) and (udp[(udp[60]/16*4)+57]=3) and (udp[(udp[60]/16*4)+49]=3))) or (proto 41 and ip[26] = 6 and ip[(ip[72]/16*4)+60]=22 and (ip[(ip[72]/16*4+5)+60]=1) and (ip[(ip[72]/16*4+9)+60]=3) and (ip[(ip[72]/16*4+1)+60]=3))) or (ip[6:2] & 0x1fff != 0)")
-	//if err != nil {
-	//	return err
-	//}
-	defer handle.Close()
+	defer func() {
+		if c, ok := handle.(interface{ Close() error }); ok {
+			c.Close()
+		}
+	}()
 
 	ip4defragger := ip4defrag.NewIPv4Defragmenter()
 	streamFactory := &tlsStreamFactory{}
 	streamPool := tcpassembly.NewStreamPool(streamFactory)
 	assembler := tcpassembly.NewAssembler(streamPool)
 
-	// Use the handle as a packet source to process all packets
-	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+	packetSource := gopacket.NewPacketSource(handle, layers.LinkTypeEthernet)
 
 	for packet := range packetSource.Packets() {
 		// IP defragmentation

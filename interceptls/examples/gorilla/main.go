@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	interceptls "github.com/leebrotherston/dactyloscopy/inteceptls"
+	interceptls "github.com/leebrotherston/dactyloscopy/interceptls"
 )
 
 // === Main ===

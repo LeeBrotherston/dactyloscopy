@@ -2,6 +2,7 @@ package dactyloscopy
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"golang.org/x/crypto/cryptobyte"
@@ -200,4 +201,28 @@ func sliceToDash8(input []uint8) string {
 		outSlice = append(outSlice, fmt.Sprintf("%d", i))
 	}
 	return strings.Join(outSlice, "-")
+}
+
+// sortNumeric takes a slice of numeric values, and returns a sorted slice of
+// the same type (e.g. []uint8 => sorted []uint8).  Using sort.Slice normally
+// results in the source slice being reordered, but sometimes we don't want that
+func sortNumericDesc[T int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64 | float32 | float64](in []T) []T {
+	return sortNumeric(in, true)
+}
+
+func sortNumericAsc[T int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64 | float32 | float64](in []T) []T {
+	return sortNumeric(in, false)
+}
+
+func sortNumeric[T int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64 | float32 | float64](in []T, ascending bool) []T {
+	sortableSlice := make([]T, len(in))
+	copy(sortableSlice, in)
+	sort.Slice(sortableSlice, func(i, j int) bool {
+		if ascending {
+			return sortableSlice[i] > sortableSlice[j]
+		} else {
+			return sortableSlice[i] < sortableSlice[j]
+		}
+	})
+	return sortableSlice
 }

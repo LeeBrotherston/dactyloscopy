@@ -2,7 +2,7 @@ package dactyloscopy
 
 const (
 	// Configuration Constants
-	minPacketLength = 47
+	minPacketLength = 45 // Theoretical minimum size of smallest TLS header (TLSv1.0)
 
 	// TLS Extension types
 	ExtServerName          uint16 = 0x0000
