@@ -60,14 +60,15 @@ func IsClientHello(buf []byte) error {
 	}
 
 	// Quick acid test for TLS client hello packet
-	if !(buf[0] == HandshakeType &&
+	if buf[0] == HandshakeType &&
 		buf[5] == ClientHelloMsg &&
 		buf[1] == RecordTLSVersion &&
-		buf[9] == TLSVersion) {
-		return fmt.Errorf("invalid TLS client hello format")
-	}
+		buf[9] == TLSVersion {
+		return nil
 
-	return nil
+	}
+	return fmt.Errorf("invalid TLS client hello format")
+
 }
 
 func (f *Fingerprint) parseClientHello(clientHello *cryptobyte.String) error {
