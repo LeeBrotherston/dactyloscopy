@@ -85,7 +85,12 @@ func TestSamplePcaps(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer pcapFile.Close()
+		defer func() {
+			err = pcapFile.Close()
+			if err != nil {
+				t.Errorf("could not close pcap, err=[%s]", err)
+			}
+		}()
 
 		packetSource := gopacket.NewPacketSource(r, r.LinkType())
 		for packet := range packetSource.Packets() {
@@ -126,7 +131,12 @@ func FuzzProcessClientHello(f *testing.F) {
 		if err != nil {
 			f.Fatal(err)
 		}
-		defer pcapFile.Close()
+		defer func() {
+			err = pcapFile.Close()
+			if err != nil {
+				f.Errorf("could not close pcap, err=[%s]", err)
+			}
+		}()
 
 		packetSource := gopacket.NewPacketSource(r, r.LinkType())
 		for packet := range packetSource.Packets() {
