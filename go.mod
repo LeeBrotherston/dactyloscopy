@@ -1,19 +1,17 @@
 module github.com/LeeBrotherston/dactyloscopy
 
-go 1.24.0
-
-toolchain go1.24.3
+go 1.25.0
 
 require (
 	github.com/google/gopacket v1.1.19
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/crypto v0.47.0
+	golang.org/x/crypto v0.51.0
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
