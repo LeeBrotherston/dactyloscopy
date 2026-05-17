@@ -45,6 +45,8 @@ func TestInterceptListener_CapturesJA3(t *testing.T) {
 		ConnContext: interceptls.ConnContextHandler,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fp := interceptls.GetFingerprintFromRequest(w, r)
+			err = fp.MakeHashes()
+			require.NoError(t, err)
 			require.NotEmpty(t, fp.JA3)
 			w.Write([]byte(fp.JA3))
 		}),
