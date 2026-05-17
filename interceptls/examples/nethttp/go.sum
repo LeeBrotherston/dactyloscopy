@@ -1,0 +1,14 @@
+github.com/LeeBrotherston/dactyloscopy v0.0.0-20250813182441-4b6fb1ddec92 h1:UrqTszgSSlmsUkjbm/xKanRvctSid8XFjdEALW1aBp4=
+github.com/LeeBrotherston/dactyloscopy v0.0.0-20250813182441-4b6fb1ddec92/go.mod h1:lbnCssqqmuvf1JiQB37rabc/Ob+l65NKm3LqOE7otOM=
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/leebrotherston/dactyloscopy/interceptls v0.0.0-20260516234205-901eae120cd2 h1:0Xx33EaZbI30qLjgN/y+Mx6auF1Z+sFY2o5071atYP4=
+github.com/leebrotherston/dactyloscopy/interceptls v0.0.0-20260516234205-901eae120cd2/go.mod h1:7T5X3BwP+o57gD3fu4FBNiSOFxvacryhQmZ79K3D/iw=
+github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
+github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
+golang.org/x/crypto v0.47.0 h1:V6e3FRj+n4dbpw86FJ8Fv7XVOql7TEwpHapKoMJ/GO8=
+golang.org/x/crypto v0.47.0/go.mod h1:ff3Y9VzzKbwSSEzWqJsJVBnWmRwRSHt/6Op5n9bQc4A=
+gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=

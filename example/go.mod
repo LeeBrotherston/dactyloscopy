@@ -1,8 +1,6 @@
 module example
 
-go 1.24.0
-
-toolchain go1.24.3
+go 1.25.0
 
 replace github.com/LeeBrotherston/dactyloscopy => ./../
 
@@ -12,7 +10,7 @@ require (
 )
 
 require (
-	golang.org/x/crypto v0.47.0 // indirect
-	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
 )

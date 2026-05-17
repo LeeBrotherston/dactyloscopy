@@ -53,13 +53,9 @@ func (f *Fingerprint) handleExtension(extensionType uint16, extContent cryptobyt
 
 	case ExtECPointFormats:
 		// ecPoint formats
-		var out []uint64
-		err := readXLengthYVal(&extContent, &out, 1, 1)
+		err := readXLengthYVal(&extContent, &f.EcPointFmt, 1)
 		if err != nil {
 			return fmt.Errorf("could not read ecPoint extension, err=[%w]", err)
-		}
-		for _, y := range out {
-			f.EcPointFmt = append(f.EcPointFmt, uint8(y))
 		}
 		f.Extensions = append(f.Extensions, extensionType)
 
