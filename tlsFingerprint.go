@@ -1,7 +1,7 @@
 package dactyloscopy
 
 import (
-	"crypto/md5"
+	"crypto/md5" // #nosec G501 -- used for JA3 calculation, not for security
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -68,7 +68,6 @@ func IsClientHello(buf []byte) error {
 
 	}
 	return fmt.Errorf("invalid TLS client hello format")
-
 }
 
 func (f *Fingerprint) parseClientHello(clientHello *cryptobyte.String) error {
@@ -224,7 +223,7 @@ func (f *Fingerprint) generateJA3() error {
 		sliceToDash16(f.ECurves),
 		sliceToDash8(f.EcPointFmt))
 
-	hasher := md5.New()
+	hasher := md5.New() // #nosec G401 -- used for JA3 calculation, not for security
 	if _, err := hasher.Write([]byte(unhashed)); err != nil {
 		return fmt.Errorf("calculating hash: %w", err)
 	}
