@@ -36,7 +36,12 @@ func TestInterceptListener_CapturesJA3(t *testing.T) {
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer ln.Close()
+	defer func() {
+		err = ln.Close()
+		if err != nil {
+			t.Errorf("error closing listener, err=[%s]", err)
+		}
+	}()
 
 	wrapped := interceptls.NewInterceptListener(ln, tlsConf)
 
@@ -48,12 +53,26 @@ func TestInterceptListener_CapturesJA3(t *testing.T) {
 			err = fp.MakeHashes()
 			require.NoError(t, err)
 			require.NotEmpty(t, fp.JA3)
-			w.Write([]byte(fp.JA3))
+			_, err = w.Write([]byte(fp.JA3))
+			if err != nil {
+				t.Errorf("error writing bytes, err=[%s]", err)
+			}
 		}),
 	}
 
-	go server.Serve(wrapped)
-	defer server.Close()
+	go func() {
+		err = server.Serve(wrapped)
+		if err != nil {
+			t.Errorf("error with server, err=[%s]", err)
+		}
+	}()
+
+	defer func() {
+		err = server.Close()
+		if err != nil {
+			t.Errorf("error closing server, err=[%s]", err)
+		}
+	}()
 
 	// Create a real TLS client
 	rootCAs := x509.NewCertPool()
@@ -71,9 +90,13 @@ func TestInterceptListener_CapturesJA3(t *testing.T) {
 
 	resp, err := client.Get("https://" + ln.Addr().String())
 	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			t.Errorf("error closing response, err=[%s]", err)
+		}
+	}()
+	defer require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func generateSelfSignedCert(t *testing.T) (certPEM, keyPEM []byte, err error) {
