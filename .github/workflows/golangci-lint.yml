@@ -32,7 +32,9 @@ jobs:
           args: ./...
 
       - name: Golangci-lint
-        uses: golangci/golangci-lint-action@v9.2.0
+        uses: golangci/golangci-lint-action@v9
+        with:
+          skip-cache: true
 
       - name: TruffleHog OSS
         uses: trufflesecurity/trufflehog@v3.84.2
