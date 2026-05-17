@@ -22,55 +22,18 @@ func skip16(data cryptobyte.String) error {
 	return nil
 }
 
-func read16Length16Pair(dataBlock *cryptobyte.String, output *[]uint16) error {
-	var outputInt []uint64
-	err := readXLengthYVal(dataBlock, &outputInt, 2, 2)
-	if err != nil {
-		return err
-	}
-	for _, y := range outputInt {
-		*output = append(*output, uint16(y))
-	}
-	return nil
-}
-
-func read16Length8Pair(dataBlock *cryptobyte.String, output *[]uint8) error {
-	var outputInt []uint64
-	err := readXLengthYVal(dataBlock, &outputInt, 2, 1)
-	if err != nil {
-		return err
-	}
-	for _, y := range outputInt {
-		*output = append(*output, uint8(y))
-	}
-	return nil
-}
-
-func read8Length16Pair(dataBlock *cryptobyte.String, output *[]uint16) error {
-	var outputInt []uint64
-	err := readXLengthYVal(dataBlock, &outputInt, 1, 2)
-	if err != nil {
-		return err
-	}
-	for _, y := range outputInt {
-		*output = append(*output, uint16(y))
-	}
-	return nil
-}
-
-func readXLengthYVal(dataBlock *cryptobyte.String, output *[]uint64, lengthSize int, valueSize int) error {
+func readXLengthYVal[Y uint8 | uint16 | uint32 | uint64](dataBlock *cryptobyte.String, output *[]Y, lengthSize int) error {
 	var (
+		singleValue Y
 		lengthBytes []byte
-		debugStr    string
 	)
-	debugStr = fmt.Sprintf("data=[%X]", *dataBlock)
 	if dataBlock.Empty() {
 		return fmt.Errorf("dataBlock is empty in readXLengthYVal")
 	}
+	// Will skip ahead over the length section
 	if !dataBlock.ReadBytes(&lengthBytes, lengthSize) {
 		return fmt.Errorf("could not read length values using readXLengthYVal")
 	}
-	debugStr = fmt.Sprintf("%s length_bytes=[%d] using size=[%d]", debugStr, lengthBytes, lengthSize)
 	if lengthSize == 0 {
 		return fmt.Errorf("length is zero in readXLengthYVal, lengthSize=[%d], data=[%X]", lengthSize, *dataBlock)
 	}
@@ -82,37 +45,55 @@ func readXLengthYVal(dataBlock *cryptobyte.String, output *[]uint64, lengthSize 
 	}
 
 	for !dataBlock.Empty() {
-		switch valueSize {
-		case 1:
-			var singleValue uint8
-			if !dataBlock.ReadUint8(&singleValue) {
-				return fmt.Errorf("could not read uint8 value in readXLengthYVal, debug %s", debugStr)
+		// This silliness is to allow us to switch on a generic
+		switch v := any(singleValue).(type) {
+		case uint8:
+			if !dataBlock.ReadUint8(&v) {
+				return fmt.Errorf("could not read next block, length misalignment")
 			}
-			*output = append(*output, uint64(singleValue))
-		case 2:
-			var singleValue uint16
-			if !dataBlock.ReadUint16(&singleValue) {
-				return fmt.Errorf("could not read uint16 value in readXLengthYVal, debug %s", debugStr)
+			*output = append(*output, Y(v))
+		case uint16:
+			if !dataBlock.ReadUint16(&v) {
+				return fmt.Errorf("could not read next block, length misalignment")
 			}
-			*output = append(*output, uint64(singleValue))
-		case 4:
-			var singleValue uint32
-			if !dataBlock.ReadUint32(&singleValue) {
-				return fmt.Errorf("could not read uint32 value in readXLengthYVal, debug %s", debugStr)
+			*output = append(*output, Y(v))
+		case uint32:
+			if !dataBlock.ReadUint32(&v) {
+				return fmt.Errorf("could not read next block, length misalignment")
 			}
-			*output = append(*output, uint64(singleValue))
-		case 8:
-			var singleValue uint64
-			if !dataBlock.ReadUint64(&singleValue) {
-				return fmt.Errorf("could not read uint64 value in readXLengthYVal, debug %s", debugStr)
+			*output = append(*output, Y(v))
+		case uint64:
+			if !dataBlock.ReadUint64(&v) {
+				return fmt.Errorf("could not read next block, length misalignment")
 			}
-			*output = append(*output, singleValue)
+			*output = append(*output, Y(v))
 		default:
-			return fmt.Errorf("invalid value size %d in readXLengthYVal, debug %s", valueSize, debugStr)
+			return fmt.Errorf("could not read next block, unexpected type")
 		}
 	}
-
 	return nil
+}
+
+func readXLengthYPair[Y uint8 | uint16 | uint32 | uint64](dataBlock *cryptobyte.String, output *[]Y) error {
+	var outputInt []Y
+	err := readXLengthYVal(dataBlock, &outputInt, 2)
+	if err != nil {
+		return err
+	}
+	*output = append(*output, outputInt...)
+	return nil
+}
+
+func read16Length16Pair(dataBlock *cryptobyte.String, output *[]uint16) error {
+	return readXLengthYPair(dataBlock, output)
+}
+
+func read16Length8Pair(dataBlock *cryptobyte.String, output *[]uint8) error {
+	return readXLengthYPair(dataBlock, output)
+}
+
+func read8Length16Pair(dataBlock *cryptobyte.String, output *[]uint16) error {
+	return readXLengthYPair(dataBlock, output)
 }
 
 // sliceToDash16 converts a slice of number values and make a dash delimited
