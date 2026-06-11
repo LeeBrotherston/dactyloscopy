@@ -35,6 +35,7 @@ type Fingerprint struct {
 
 	rawSuites     cryptobyte.String
 	rawExtensions cryptobyte.String
+	Err           error
 }
 
 // Validate checks if the fingerprint data is valid

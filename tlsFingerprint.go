@@ -40,14 +40,6 @@ func (f *Fingerprint) ProcessClientHello(buf []byte) error {
 		return fmt.Errorf("parsing client hello: %w", err)
 	}
 
-	if err := f.generateJA3(); err != nil {
-		return fmt.Errorf("error generating JA3: %w", err)
-	}
-
-	if err := f.generateJA4(); err != nil {
-		return fmt.Errorf("error generating JA4: %w", err)
-	}
-
 	return nil
 }
 
@@ -214,7 +206,7 @@ func (f *Fingerprint) addExtList() error {
 	return nil
 }
 
-func (f *Fingerprint) generateJA3() error {
+func (f *Fingerprint) GenerateJA3() error {
 	// JA3 spec is : SSLVersion,Cipher,SSLExtension,EllipticCurve,EllipticCurvePointFormat
 	unhashed := fmt.Sprintf("%d,%s,%s,%s,%s",
 		f.TLSVersion,
@@ -232,7 +224,7 @@ func (f *Fingerprint) generateJA3() error {
 	return nil
 }
 
-func (f *Fingerprint) generateJA4() error {
+func (f *Fingerprint) GenerateJA4() error {
 	// JA4: t<version><sni><cipher count><ext count><alpn>,<ciphers>,<exts>,<alpn-list>
 	JA4_a := "t"
 
@@ -315,10 +307,13 @@ func (f *Fingerprint) generateJA4() error {
 // is already handling the JA3 hash generation
 func (f *Fingerprint) MakeHashes() error {
 	// Generate JA3 hash
-	if err := f.generateJA3(); err != nil {
+	if err := f.GenerateJA3(); err != nil {
 		return fmt.Errorf("generating JA3 hash: %w", err)
 	}
 
+	if err := f.GenerateJA4(); err != nil {
+		return fmt.Errorf("generating JA3 hash: %w", err)
+	}
 	// Generate LB1 hash if needed
 	// TODO: Implement LB1 hash generation if required
 	// f.LB1 = ...

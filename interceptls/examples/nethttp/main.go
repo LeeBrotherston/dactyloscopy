@@ -35,17 +35,17 @@ func main() {
 		Certificates: []tls.Certificate{cert},
 	}
 
-	ln, err := net.Listen("tcp", ":8443")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	server := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			info := interceptls.GetFingerprintFromRequest(w, r)
 			fmt.Fprintf(w, "Hello! Parsed Client Hello: %+v\n", info)
 		}),
 		ConnContext: interceptls.ConnContextHandler,
+	}
+
+	ln, err := net.Listen("tcp", ":8443")
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	log.Printf("Listening on https://%s", ln.Addr().String())

@@ -48,7 +48,9 @@ func GetFingerprintFromContext(ctx context.Context) dactyloscopy.Fingerprint {
 	if info, ok := ctx.Value(ClientHelloKey).(*dactyloscopy.Fingerprint); ok {
 		return *info
 	}
-	return dactyloscopy.Fingerprint{}
+	return dactyloscopy.Fingerprint{
+		Err: fmt.Errorf("context not found"),
+	}
 }
 
 func (l *inspectingListener) Accept() (net.Conn, error) {
@@ -107,7 +109,9 @@ func extractFP(data []byte) dactyloscopy.Fingerprint {
 	var tlsfp dactyloscopy.Fingerprint
 	err := tlsfp.ProcessClientHello(data)
 	if err != nil {
-		return dactyloscopy.Fingerprint{}
+		return dactyloscopy.Fingerprint{
+			Err: err,
+		}
 	}
 	return tlsfp
 }

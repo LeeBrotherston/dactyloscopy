@@ -74,9 +74,9 @@ func readXLengthYVal[Y uint8 | uint16 | uint32 | uint64](dataBlock *cryptobyte.S
 	return nil
 }
 
-func readXLengthYPair[Y uint8 | uint16 | uint32 | uint64](dataBlock *cryptobyte.String, output *[]Y) error {
+func readXLengthYPair[Y uint8 | uint16 | uint32 | uint64](dataBlock *cryptobyte.String, output *[]Y, x int) error {
 	var outputInt []Y
-	err := readXLengthYVal(dataBlock, &outputInt, 2)
+	err := readXLengthYVal(dataBlock, &outputInt, x)
 	if err != nil {
 		return err
 	}
@@ -85,15 +85,15 @@ func readXLengthYPair[Y uint8 | uint16 | uint32 | uint64](dataBlock *cryptobyte.
 }
 
 func read16Length16Pair(dataBlock *cryptobyte.String, output *[]uint16) error {
-	return readXLengthYPair(dataBlock, output)
+	return readXLengthYPair(dataBlock, output, 2)
 }
 
 func read16Length8Pair(dataBlock *cryptobyte.String, output *[]uint8) error {
-	return readXLengthYPair(dataBlock, output)
+	return readXLengthYPair(dataBlock, output, 2)
 }
 
 func read8Length16Pair(dataBlock *cryptobyte.String, output *[]uint16) error {
-	return readXLengthYPair(dataBlock, output)
+	return readXLengthYPair(dataBlock, output, 1)
 }
 
 // sliceToDash16 converts a slice of number values and make a dash delimited
